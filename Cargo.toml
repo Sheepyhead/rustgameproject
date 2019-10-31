@@ -5,6 +5,10 @@ authors = [
     "Troels Sheepyhead Jessen <kairyuka@gmail.com>"
 ]
 
+[lib]
+name = "engine"
+path = "src/engine/lib.rs"
+
 [[bin]]
 name = "gameproject"
 
