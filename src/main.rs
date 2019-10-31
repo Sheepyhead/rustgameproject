@@ -11,45 +11,83 @@ use piston::event_loop::*;
 use piston::input::*;
 use piston::window::WindowSettings;
 
-struct App {
-    pub gl: GlGraphics,                   // OpenGL drawing backend.
-    pub rotation: f64,                    // Rotation for the sprite.
-    pub asset_folder: std::path::PathBuf, // Path to assets
+pub struct Position {
+    pub x: f64,
+    pub y: f64,
+}
+
+struct Sprite {
+    image: graphics::Image, // The image to draw the sprite inside
+    texture: Texture,       // The texture to draw on the image
+    rotation: f64,          // The rotation of the sprite
+    size: f64,              // The size of the sprite
+    position: Position,     // Position of the sprite
+}
+
+pub struct App {
+    pub gl: GlGraphics,   // OpenGL drawing backend.
+    sprites: Vec<Sprite>, // Sprites in world
 }
 
 impl App {
+    pub fn new(gl: GlGraphics) -> App {
+        let sprites: Vec<Sprite> = Vec::new();
+        App { gl, sprites }
+    }
+
+    /// Adds sprite to world
+    pub fn add_sprite(
+        &mut self,
+        asset_path: std::path::PathBuf,
+        position: Position,
+        rotation: f64,
+        size: f64,
+    ) -> usize {
+        let image = graphics::Image::new().rect(square(0.0, 0.0, size));
+        let texture_settings = TextureSettings::new()
+            .filter(Filter::Nearest)
+            .mipmap(Filter::Nearest);
+        let texture = Texture::from_path(asset_path, &texture_settings).unwrap();
+        self.sprites.push(Sprite {
+            image,
+            texture,
+            rotation,
+            size,
+            position,
+        });
+        self.sprites.len()
+    }
     fn render(&mut self, args: &RenderArgs) {
         use graphics::*;
 
         const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 
-        let sprite = self.asset_folder.join("sprite.png");
-        let image = Image::new().rect(square(0.0, 0.0, 50.0));
-        let texture_settings = TextureSettings::new()
-            .filter(Filter::Nearest)
-            .mipmap(Filter::Nearest);
-        let sprite = Texture::from_path(sprite,&texture_settings).unwrap();
-        let rotation = self.rotation;
-        let (x, y) = (args.window_size[0] / 2.0, args.window_size[1] / 2.0);
+        let context = self.gl.draw_begin(args.viewport());
 
-        self.gl.draw(args.viewport(), |c, gl| {
-            // Clear the screen.
-            clear(BLACK, gl);
-
-            let transform = c
+        // Clear the screen.
+        clear(BLACK, &mut self.gl);
+        for sprite in self.sprites.iter() {
+            let transform = context
                 .transform
-                .trans(x, y)
-                .rot_rad(rotation)
-                .trans(-25.0, -25.0);
+                .trans(sprite.position.x, sprite.position.y)
+                .rot_rad(sprite.rotation)
+                .trans(-(sprite.size / 2.0), -(sprite.size / 2.0));
 
-            // Draw a box rotating around the middle of the screen.
-            image.draw(&sprite, &DrawState::default(), transform, gl);
-        });
+            self.gl.image(
+                &sprite.image,
+                &sprite.texture,
+                &DrawState::default(),
+                transform,
+            );
+        }
+
+        self.gl.draw_end();
     }
 
     fn update(&mut self, args: &UpdateArgs) {
-        // Rotate 2 radians per second.
-        self.rotation += 2.0 * args.dt;
+        for sprite in &mut self.sprites {
+            sprite.rotation += 2.0 * args.dt;
+        }
     }
 }
 
@@ -58,20 +96,24 @@ fn main() {
     let opengl = OpenGL::V3_2;
 
     // Create an Glutin window.
-    let mut window: Window = WindowSettings::new("spinning-square", [200, 200])
+    let mut window: Window = WindowSettings::new("spinning-square", [800, 800])
         .graphics_api(opengl)
         .exit_on_esc(true)
         .build()
         .unwrap();
 
     // Create a new game and run it.
-    let mut app = App {
-        gl: GlGraphics::new(opengl),
-        rotation: 0.0,
-        asset_folder: find_folder::Search::ParentsThenKids(3, 3)
+    let mut app = App::new(GlGraphics::new(opengl));
+
+    app.add_sprite(
+        find_folder::Search::ParentsThenKids(3, 3)
             .for_folder("assets")
-            .unwrap(),
-    };
+            .unwrap()
+            .join("sprite.png"),
+        Position { x: 0.0, y: 0.0 },
+        0.0,
+        50.0,
+    );
 
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
