@@ -1,16 +1,22 @@
 extern crate find_folder;
-extern crate glutin_window;
+extern crate gfx_device_gl;
 extern crate graphics;
 extern crate opengl_graphics;
 extern crate piston;
+extern crate piston_window;
+extern crate sprite;
+extern crate uuid;
 
-use glutin_window::GlutinWindow as Window;
-use graphics::ImageSize;
-use opengl_graphics::{Filter, GlGraphics, OpenGL, Texture, TextureSettings};
-use piston::event_loop::*;
-use piston::input::*;
+use opengl_graphics::{Filter, GlGraphics, OpenGL, TextureSettings};
 use piston::window::WindowSettings;
+use piston_window::PistonWindow as Window;
+use piston_window::*;
+use sprite::*;
+pub use uuid::Uuid;
 
+use std::rc::Rc;
+
+/*
 struct Sprite {
     image: graphics::Image, // The image to draw the sprite inside
     texture: Texture,       // The texture to draw on the image
@@ -27,27 +33,21 @@ impl Sprite {
         )
     }
 }
+*/
 
 pub struct Game {
-    pub gl: GlGraphics,   // OpenGL drawing backend.
-    sprites: Vec<Sprite>, // Sprites in world
-    main_window: Window,  // The main game window
+    pub gl: GlGraphics, // OpenGL drawing backend.
+    sprites: Vec<(Uuid, Scene<Texture<gfx_device_gl::Resources>>)>, // Sprites in world
+    main_window: Window, // The main game window
 }
 
 impl Game {
     pub fn run(&mut self) {
-        let mut events = Events::new(EventSettings::new());
-        while let Some(e) = events.next(&mut self.main_window) {
-            if let Some(r) = e.render_args() {
-                self.render(&r);
-            }
-
-            if let Some(u) = e.update_args() {
-                self.update(&u);
-            }
+        while let Some(e) = self.main_window.next() {
+            self.render(&e);
+            self.update(&e);
         }
     }
-
     pub fn new(title: &str) -> Game {
         let opengl = OpenGL::V3_2;
 
@@ -59,7 +59,7 @@ impl Game {
 
         let gl = GlGraphics::new(opengl);
 
-        let sprites: Vec<Sprite> = Vec::new();
+        let sprites: Vec<(Uuid, Scene<Texture<gfx_device_gl::Resources>>)> = Vec::new();
 
         Game {
             gl,
@@ -79,62 +79,50 @@ impl Game {
         let texture_settings = TextureSettings::new()
             .filter(Filter::Nearest)
             .mipmap(Filter::Nearest);
-        let texture = Texture::from_path(
-            find_folder::Search::ParentsThenKids(3, 3)
-                .for_folder("assets")
-                .unwrap()
-                .join(file_name),
-            &texture_settings,
-        )
-        .unwrap();
-        let image = graphics::Image::new().rect([
-            0.0,
-            0.0,
-            texture.get_width() as f64 * size_factor,
-            texture.get_height() as f64 * size_factor,
-        ]);
-        self.sprites.push(Sprite {
-            image,
-            texture,
-            rotation,
-            size_factor,
-            position: (x, y),
-        });
+
+        let mut scene = Scene::new();
+        let mut texture_context = TextureContext {
+            factory: self.main_window.factory.clone(),
+            encoder: self.main_window.factory.create_command_buffer().into(),
+        };
+
+        let texture = Rc::new(
+            Texture::from_path(
+                &mut texture_context,
+                find_folder::Search::ParentsThenKids(3, 3)
+                    .for_folder("assets")
+                    .unwrap()
+                    .join(file_name),
+                Flip::None,
+                &texture_settings,
+            )
+            .unwrap(),
+        );
+
+        let mut sprite = Sprite::from_texture(texture.clone());
+
+        sprite.set_position(x, y);
+        sprite.set_rotation(rotation);
+        sprite.set_scale(size_factor, size_factor);
+
+        let index = scene.add_child(sprite);
+
+        self.sprites.push((index, scene));
         self.sprites.len()
     }
-    fn render(&mut self, args: &RenderArgs) {
+    fn render(&mut self, event: &Event) {
         use graphics::*;
-
-        const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
-
-        let context = self.gl.draw_begin(args.viewport());
-
-        // Clear the screen.
-        clear(BLACK, &mut self.gl);
-
-        // Render all sprites
-        for sprite in self.sprites.iter() {
-            let (size_x, size_y) = sprite.get_actual_size();
-            let transform = context
-                .transform
-                .trans(sprite.position.0, sprite.position.1)
-                .rot_rad(sprite.rotation)
-                .trans(-(size_x / 2.0), -(size_y / 2.0));
-
-            self.gl.image(
-                &sprite.image,
-                &sprite.texture,
-                &DrawState::default(),
-                transform,
-            );
-        }
-
-        self.gl.draw_end();
+        let sprites = &mut self.sprites;
+        self.main_window.draw_2d(event, |context, gfx, _| {
+            clear([0.0, 0.0, 0.0, 0.0], gfx);
+            for (_, scene) in sprites.iter_mut() {
+                scene.event(event);
+                scene.draw(context.transform, gfx);
+            }
+        });
     }
 
-    fn update(&mut self, args: &UpdateArgs) {
-        for sprite in &mut self.sprites {
-            sprite.rotation += 2.0 * args.dt;
-        }
+    fn update(&mut self, event: &Event) {
+        if let Some(render_args) = event.render_args() {}
     }
 }
