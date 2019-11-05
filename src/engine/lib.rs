@@ -16,29 +16,13 @@ pub use uuid::Uuid;
 
 use std::rc::Rc;
 
-/*
-struct Sprite {
-    image: graphics::Image, // The image to draw the sprite inside
-    texture: Texture,       // The texture to draw on the image
-    rotation: f64,          // The rotation of the sprite
-    size_factor: f64,       // The size of the sprite
-    position: (f64, f64),   // Position of the sprite
-}
-
-impl Sprite {
-    pub fn get_actual_size(&self) -> (f64, f64) {
-        (
-            self.texture.get_width() as f64 * self.size_factor,
-            self.texture.get_height() as f64 * self.size_factor,
-        )
-    }
-}
-*/
+mod gameobject;
 
 pub struct Game {
     pub gl: GlGraphics, // OpenGL drawing backend.
     sprites: Vec<(Uuid, Scene<Texture<gfx_device_gl::Resources>>)>, // Sprites in world
     main_window: Window, // The main game window
+    objects: Vec<gameobject::GameObject>,
 }
 
 impl Game {
@@ -61,10 +45,13 @@ impl Game {
 
         let sprites: Vec<(Uuid, Scene<Texture<gfx_device_gl::Resources>>)> = Vec::new();
 
+        let objects: Vec<gameobject::GameObject> = Vec::new();
+
         Game {
             gl,
             sprites,
             main_window,
+            objects,
         }
     }
 
@@ -123,6 +110,22 @@ impl Game {
     }
 
     fn update(&mut self, event: &Event) {
-        if let Some(render_args) = event.render_args() {}
+        if let Some(render_args) = event.render_args() {
+            // Update game
+        }
+    }
+
+    pub fn new_game_object(&mut self, x: f64, y: f64) -> usize {
+        let object = gameobject::GameObject::new((x, y));
+        self.objects.push(object);
+        self.objects.len()
+    }
+
+    pub fn get_game_object(&self, index: usize) -> Option<&gameobject::GameObject> {
+        self.objects.get(index)
+    }
+
+    pub fn get_game_object_mut(&mut self, index: usize) -> Option<&mut gameobject::GameObject> {
+        self.objects.get_mut(index)
     }
 }
