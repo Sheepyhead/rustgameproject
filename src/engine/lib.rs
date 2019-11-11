@@ -7,20 +7,16 @@ extern crate piston_window;
 extern crate sprite;
 extern crate uuid;
 
-use opengl_graphics::{Filter, GlGraphics, OpenGL, TextureSettings};
+use opengl_graphics::{GlGraphics, OpenGL};
 use piston::window::WindowSettings;
 use piston_window::PistonWindow as Window;
 use piston_window::*;
-use sprite::*;
 pub use uuid::Uuid;
-
-use std::rc::Rc;
 
 mod gameobject;
 
 pub struct Game {
-    pub gl: GlGraphics, // OpenGL drawing backend.
-    sprites: Vec<(Uuid, Scene<Texture<gfx_device_gl::Resources>>)>, // Sprites in world
+    pub gl: GlGraphics,  // OpenGL drawing backend.
     main_window: Window, // The main game window
     objects: Vec<gameobject::GameObject>,
 }
@@ -29,7 +25,7 @@ impl Game {
     pub fn run(&mut self) {
         while let Some(e) = self.main_window.next() {
             self.render(&e);
-            self.update(&e);
+            self.update();
         }
     }
     pub fn new(title: &str) -> Game {
@@ -43,80 +39,33 @@ impl Game {
 
         let gl = GlGraphics::new(opengl);
 
-        let sprites: Vec<(Uuid, Scene<Texture<gfx_device_gl::Resources>>)> = Vec::new();
-
         let objects: Vec<gameobject::GameObject> = Vec::new();
 
         Game {
             gl,
-            sprites,
-            main_window,
+            main_window: main_window,
             objects,
         }
     }
 
-    /// Adds sprite to world
-    pub fn add_sprite(
-        &mut self,
-        file_name: &str,
-        (x, y): (f64, f64), // Position
-        rotation: f64,
-        size_factor: f64,
-    ) -> usize {
-        let texture_settings = TextureSettings::new()
-            .filter(Filter::Nearest)
-            .mipmap(Filter::Nearest);
-
-        let mut scene = Scene::new();
-        let mut texture_context = TextureContext {
-            factory: self.main_window.factory.clone(),
-            encoder: self.main_window.factory.create_command_buffer().into(),
-        };
-
-        let texture = Rc::new(
-            Texture::from_path(
-                &mut texture_context,
-                find_folder::Search::ParentsThenKids(3, 3)
-                    .for_folder("assets")
-                    .unwrap()
-                    .join(file_name),
-                Flip::None,
-                &texture_settings,
-            )
-            .unwrap(),
-        );
-
-        let mut sprite = Sprite::from_texture(texture.clone());
-
-        sprite.set_position(x, y);
-        sprite.set_rotation(rotation);
-        sprite.set_scale(size_factor, size_factor);
-
-        let index = scene.add_child(sprite);
-
-        self.sprites.push((index, scene));
-        self.sprites.len()
-    }
     fn render(&mut self, event: &Event) {
-        use graphics::*;
-        let sprites = &mut self.sprites;
-        self.main_window.draw_2d(event, |context, gfx, _| {
-            clear([0.0, 0.0, 0.0, 0.0], gfx);
-            for (_, scene) in sprites.iter_mut() {
-                scene.event(event);
-                scene.draw(context.transform, gfx);
-            }
-        });
-    }
+        let objects = &mut self.objects;
 
-    fn update(&mut self, event: &Event) {
-        if let Some(render_args) = event.render_args() {
-            // Update game
+        for object in objects.iter_mut() {
+            object.render(event);
         }
     }
 
-    pub fn new_game_object(&mut self, x: f64, y: f64) -> usize {
-        let object = gameobject::GameObject::new((x, y));
+    fn update(&mut self) {
+        let objects = &mut self.objects;
+
+        for object in objects.iter_mut() {
+            object.update();
+        }
+    }
+
+    pub fn new_game_object(&'static mut self, x: f64, y: f64) -> usize {
+        let object = gameobject::GameObject::new((x, y), &mut self.main_window);
         self.objects.push(object);
         self.objects.len()
     }
@@ -127,5 +76,13 @@ impl Game {
 
     pub fn get_game_object_mut(&mut self, index: usize) -> Option<&mut gameobject::GameObject> {
         self.objects.get_mut(index)
+    }
+
+    pub fn get_main_window(&self) -> &Window {
+        &self.main_window
+    }
+
+    pub fn get_main_window_mut(&mut self) -> &mut Window {
+        &mut self.main_window
     }
 }

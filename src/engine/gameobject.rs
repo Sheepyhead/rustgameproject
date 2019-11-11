@@ -23,8 +23,7 @@ pub struct TransformComponent {
 
 struct SpriteComponent {
     scene: sprite::Scene<piston_window::Texture<gfx_device_gl::Resources>>,
-    window: Window,
-    parent_transform: &TransformComponent,
+    sprite_uuid: Uuid,
 }
 
 impl SpriteComponent {
@@ -35,11 +34,11 @@ impl SpriteComponent {
         });
     }
 
-    fn update(&mut self, args: &RenderArgs) {
-        if let Some(sprite) = self.scene.children().first() {
-            sprite.set_position(self.parent_transform.x, self.parent_transform.y);
-            sprite.set_rotation(self.parent_transform.rotation);
-            sprite.set_scale(self.parent_transform.size, self.parent_transform.size);
+    fn update(&mut self, transform: &TransformComponent) {
+        if let Some(sprite) = self.scene.child_mut(self.sprite_uuid) {
+            sprite.set_position(transform.x, transform.y);
+            sprite.set_rotation(transform.rotation);
+            sprite.set_scale(transform.size, transform.size);
         }
     }
 }
@@ -47,10 +46,11 @@ impl SpriteComponent {
 pub struct GameObject {
     pub transform: TransformComponent,
     sprite: Option<SpriteComponent>,
+    window: &'static mut Window,
 }
 
 impl GameObject {
-    pub fn new((x, y): (f64, f64)) -> GameObject {
+    pub fn new((x, y): (f64, f64), window: &'static mut Window) -> GameObject {
         GameObject {
             transform: TransformComponent {
                 x,
@@ -58,24 +58,19 @@ impl GameObject {
                 size: 1.0,
                 rotation: 0.0,
             },
+            window,
             sprite: None,
         }
     }
 
-    pub fn add_sprite(&mut self, file_name: &str, window: Window) {
+    pub fn add_sprite(&mut self, file_name: &str) {
         let texture_settings = TextureSettings::new()
             .filter(Filter::Nearest)
             .mipmap(Filter::Nearest);
 
-        self.sprite = Option::from(SpriteComponent {
-            scene: Scene::new(),
-            window,
-            parent_transform: self.get_transform(),
-        });
-
         let mut texture_context = TextureContext {
-            factory: window.factory.clone(),
-            encoder: window.factory.create_command_buffer().into(),
+            factory: self.window.factory.clone(),
+            encoder: self.window.factory.create_command_buffer().into(),
         };
 
         let texture = Rc::new(
@@ -91,12 +86,31 @@ impl GameObject {
             .unwrap(),
         );
 
-        let mut sprite = Sprite::from_texture(texture);
-
-        self.sprite.unwrap().scene.add_child(sprite);
+        let sprite = Sprite::from_texture(texture);
+        let mut scene = Scene::new();
+        let sprite_uuid = scene.add_child(sprite);
+        self.sprite = Option::from(SpriteComponent { scene, sprite_uuid });
     }
 
     pub fn get_transform(&self) -> &TransformComponent {
         &self.transform
+    }
+
+    pub fn update(&mut self) {
+        let sprite_component = &mut self.sprite;
+        let transform = &self.transform;
+        
+        if let Some(sprite_component) = sprite_component {
+            sprite_component.update(transform);
+        }
+    }
+
+    pub fn render(&mut self, event: &piston_window::Event) {
+        let sprite_component = &mut self.sprite;
+        let window = &mut self.window;
+
+        if let Some(sprite_component) = sprite_component {
+            sprite_component.render(window, event);
+        }
     }
 }
