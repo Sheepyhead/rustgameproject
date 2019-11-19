@@ -46,11 +46,12 @@ impl SpriteComponent {
 pub struct GameObject {
     pub transform: TransformComponent,
     sprite: Option<SpriteComponent>,
-    window: &'static mut Window,
+    factory: gfx_device_gl::Factory,
+    command_buffer: gfx_device_gl::CommandBuffer,
 }
 
 impl GameObject {
-    pub fn new((x, y): (f64, f64), window: &'static mut Window) -> GameObject {
+    pub fn new((x, y): (f64, f64), factory: gfx_device_gl::Factory, command_buffer: gfx_device_gl::CommandBuffer) -> GameObject {
         GameObject {
             transform: TransformComponent {
                 x,
@@ -58,7 +59,8 @@ impl GameObject {
                 size: 1.0,
                 rotation: 0.0,
             },
-            window,
+            factory,
+            command_buffer,
             sprite: None,
         }
     }
@@ -69,8 +71,8 @@ impl GameObject {
             .mipmap(Filter::Nearest);
 
         let mut texture_context = TextureContext {
-            factory: self.window.factory.clone(),
-            encoder: self.window.factory.create_command_buffer().into(),
+            factory: self.factory,
+            encoder: self.command_buffer.into(),
         };
 
         let texture = Rc::new(
@@ -107,7 +109,6 @@ impl GameObject {
 
     pub fn render(&mut self, event: &piston_window::Event) {
         let sprite_component = &mut self.sprite;
-        let window = &mut self.window;
 
         if let Some(sprite_component) = sprite_component {
             sprite_component.render(window, event);

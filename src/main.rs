@@ -1,14 +1,16 @@
 extern crate engine;
 
+use engine::Game;
+
 fn main() {
     // Create a new game and run it.
-    let game = engine::Game::new("Game Project");
+    let mut game = Game::new("Game Project");
 
-    let player = game.new_game_object(400.0, 400.0);
+    let player = Game::new_game_object(&mut game, 400.0, 400.0);
 
-    let player = game.get_game_object_mut(player).unwrap();
+    let player = Game::get_game_object_mut(&mut game, player).unwrap();
 
     player.add_sprite("othersprite.png");
 
-    game.run();
+    Game::run(&mut game);
 }
