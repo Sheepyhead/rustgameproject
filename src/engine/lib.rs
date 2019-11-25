@@ -17,47 +17,53 @@ mod entitycomponentsystem;
 
 pub struct Game {
     gl: GlGraphics, // OpenGL drawing backend.
+    ecs: entitycomponentsystem::ECS,
+    main_window: Window,
 }
 
-static mut main_window: Option<Window> = None; // The main game window
+impl Game {
+    pub fn new(title: &str, size: (f64, f64)) -> Game {
+        let opengl = OpenGL::V3_2;
 
-pub fn run(game: &mut Game) {
-    unsafe {
-        if let Some(window) = &mut main_window {
-            while let Some(e) = window.next() {
-                render(game, &e);
-                update(game);
-            }
+        let main_window = WindowSettings::new(title, [size.0, size.1])
+            .graphics_api(opengl)
+            .exit_on_esc(true)
+            .build()
+            .unwrap();
+
+        let gl = GlGraphics::new(opengl);
+
+        Game {
+            gl,
+            ecs: entitycomponentsystem::ECS::new(),
+            main_window,
         }
     }
 }
 
-pub fn new(title: &str, size: (f64, f64)) -> Game {
-    let opengl = OpenGL::V3_2;
+pub fn new_entity(game: &mut Game, x: f64, y: f64, size: f64, rotation: f64) -> usize {
+    entitycomponentsystem::new_entity(&mut game.ecs, x, y, size, rotation)
+}
 
-    unsafe {
-        main_window = Some(
-            WindowSettings::new(title, [size.0, size.1])
-                .graphics_api(opengl)
-                .exit_on_esc(true)
-                .build()
-                .unwrap(),
-        );
+pub fn add_sprite_component(
+    game: &mut Game,
+    entity: usize,
+    file_name: &str,
+) {
+    entitycomponentsystem::add_sprite_component(&mut game.ecs, entity, file_name, game.main_window.factory.clone(), game.main_window.factory.create_command_buffer())
+}
+
+pub fn run(game: &mut Game) {
+    while let Some(e) = game.main_window.next() {
+        render(game, &e);
+        update(game);
     }
-
-    let gl = GlGraphics::new(opengl);
-
-    Game { gl }
 }
 
 fn render(game: &mut Game, event: &Event) {
-    unsafe {
-        if let Some(window) = &mut main_window {
-            entitycomponentsystem::render(window, event);
-        }
-    }
+    entitycomponentsystem::render(&mut game.ecs, &mut game.main_window, event);
 }
 
 fn update(game: &mut Game) {
-    entitycomponentsystem::update();
+    entitycomponentsystem::update(&mut game.ecs);
 }

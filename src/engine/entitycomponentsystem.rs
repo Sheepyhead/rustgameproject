@@ -14,9 +14,21 @@ use sprite::*;
 use std::rc::Rc;
 pub use uuid::Uuid;
 
-static mut entities: Vec<usize> = Vec::new();
-static mut transforms: Vec<TransformComponent> = Vec::new();
-static mut sprites: Vec<Option<SpriteComponent>> = Vec::new();
+pub struct ECS {
+    entities: Vec<usize>,
+    transforms: Vec<TransformComponent>,
+    sprites: Vec<Option<SpriteComponent>>,
+}
+
+impl ECS {
+    pub fn new() -> ECS {
+        ECS {
+            entities: Vec::new(),
+            transforms: Vec::new(),
+            sprites: Vec::new(),
+        }
+    }
+}
 
 pub struct TransformComponent {
     x: f64,
@@ -47,22 +59,22 @@ impl SpriteComponent {
     }
 }
 
-pub fn new_entity(x: f64, y: f64, size: f64, rotation: f64) -> usize {
+pub fn new_entity(ecs: &mut ECS, x: f64, y: f64, size: f64, rotation: f64) -> usize {
     let transform = TransformComponent {
         x,
         y,
         size,
         rotation,
     };
-    let position = transforms.len();
-    unsafe {
-        transforms.push(transform);
-        sprites.push(None);
-    }
+    let position = ecs.transforms.len();
+    ecs.transforms.push(transform);
+    ecs.sprites.push(None);
+    ecs.entities.push(position);
     position
 }
 
 pub fn add_sprite_component(
+    ecs: &mut ECS,
     entity: usize,
     file_name: &str,
     factory: gfx_device_gl::Factory,
@@ -93,43 +105,31 @@ pub fn add_sprite_component(
     let sprite = Sprite::from_texture(texture);
     let mut scene = Scene::new();
     let sprite_id = scene.add_child(sprite);
-    unsafe {
-        sprites[entity] = Some(SpriteComponent { scene, sprite_id });
-    }
+    ecs.sprites[entity] = Some(SpriteComponent { scene, sprite_id });
 }
 
-pub fn render(window: &mut Window, event: &Event) {
-    for sprite_component in sprites.iter() {
-        if let Some(sprite_component) = sprite_component {
-            window.draw_2d(event, |context, gfx, _| {
-                sprite_component.scene.event(event);
-                sprite_component.scene.draw(context.transform, gfx);
-            });
+pub fn render(ecs: &mut ECS, window: &mut Window, event: &Event) {
+    for (position, _) in ecs.entities.iter().enumerate() {
+        if let Some(sprite_component) = &mut ecs.sprites[position] {
+            sprite_component.render(window, &event);
         }
     }
 }
 
-pub fn update() {
-    for (position, sprite_component) in sprites.iter().enumerate() {
-        if let Some(sprite_component) = sprite_component {
-            let mut sprite = sprite_component
-                .scene
-                .child_mut(sprite_component.sprite_id)
-                .unwrap();
-            let transform = transforms[position];
-            sprite.set_position(transform.x, transform.y);
-            sprite.set_rotation(transform.rotation);
-            sprite.set_scale(transform.size, transform.size);
+pub fn update(ecs: &mut ECS) {
+    for (position, _) in ecs.entities.iter().enumerate() {
+        if let Some(sprite_component) = &mut ecs.sprites[position] {
+            sprite_component.update(&ecs.transforms[position]);
         }
     }
 }
 
-pub fn get_transform(entity: usize) -> &'static TransformComponent {
-    let transform = &transforms[entity];
+pub fn get_transform(ecs: &ECS, entity: usize) -> &TransformComponent {
+    let transform = &ecs.transforms[entity];
     transform
 }
 
-pub fn get_transform_mut(entity: usize) -> &'static mut TransformComponent {
-    let transform = &mut transforms[entity];
+pub fn get_transform_mut(ecs: &mut ECS, entity: usize) -> &mut TransformComponent {
+    let transform = &mut ecs.transforms[entity];
     transform
 }
