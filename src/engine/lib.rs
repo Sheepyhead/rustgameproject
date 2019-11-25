@@ -1,13 +1,4 @@
-extern crate find_folder;
-extern crate gfx_device_gl;
-extern crate graphics;
-extern crate opengl_graphics;
-extern crate piston;
-extern crate piston_window;
-extern crate sprite;
-extern crate uuid;
-
-use opengl_graphics::{GlGraphics, OpenGL};
+use opengl_graphics::{OpenGL};
 use piston::window::WindowSettings;
 use piston_window::PistonWindow as Window;
 use piston_window::*;
@@ -16,7 +7,6 @@ pub use uuid::Uuid;
 mod entitycomponentsystem;
 
 pub struct Game {
-    gl: GlGraphics, // OpenGL drawing backend.
     ecs: entitycomponentsystem::ECS,
     main_window: Window,
 }
@@ -31,10 +21,7 @@ impl Game {
             .build()
             .unwrap();
 
-        let gl = GlGraphics::new(opengl);
-
         Game {
-            gl,
             ecs: entitycomponentsystem::ECS::new(),
             main_window,
         }

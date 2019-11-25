@@ -1,5 +1,3 @@
-extern crate engine;
-
 use engine::Game;
 
 fn main() {

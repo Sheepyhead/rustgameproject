@@ -1,12 +1,3 @@
-extern crate find_folder;
-extern crate gfx_device_gl;
-extern crate graphics;
-extern crate opengl_graphics;
-extern crate piston;
-extern crate piston_window;
-extern crate sprite;
-extern crate uuid;
-
 use opengl_graphics::{Filter, TextureSettings};
 use piston_window::PistonWindow as Window;
 use piston_window::*;
