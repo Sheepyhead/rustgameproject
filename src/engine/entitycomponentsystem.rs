@@ -9,6 +9,7 @@ pub struct ECS {
     entities: Vec<usize>,
     transforms: Vec<TransformComponent>,
     sprites: Vec<Option<SpriteComponent>>,
+    updates: Vec<Option<UpdateComponent>>,
 }
 
 impl ECS {
@@ -17,15 +18,31 @@ impl ECS {
             entities: Vec::new(),
             transforms: Vec::new(),
             sprites: Vec::new(),
+            updates: Vec::new(),
         }
     }
 }
 
+pub fn new_entity(ecs: &mut ECS, x: f64, y: f64, size: f64, rotation: f64) -> usize {
+    let transform = TransformComponent {
+        x,
+        y,
+        size,
+        rotation,
+    };
+    let position = ecs.transforms.len();
+    ecs.entities.push(position);
+    ecs.transforms.push(transform);
+    ecs.sprites.push(None);
+    ecs.updates.push(None);
+    position
+}
+
 pub struct TransformComponent {
-    x: f64,
-    y: f64,
-    size: f64,
-    rotation: f64,
+    pub x: f64,
+    pub y: f64,
+    pub size: f64,
+    pub rotation: f64,
 }
 
 struct SpriteComponent {
@@ -48,20 +65,6 @@ impl SpriteComponent {
             sprite.set_scale(transform.size, transform.size);
         }
     }
-}
-
-pub fn new_entity(ecs: &mut ECS, x: f64, y: f64, size: f64, rotation: f64) -> usize {
-    let transform = TransformComponent {
-        x,
-        y,
-        size,
-        rotation,
-    };
-    let position = ecs.transforms.len();
-    ecs.transforms.push(transform);
-    ecs.sprites.push(None);
-    ecs.entities.push(position);
-    position
 }
 
 pub fn add_sprite_component(
@@ -99,7 +102,28 @@ pub fn add_sprite_component(
     ecs.sprites[entity] = Some(SpriteComponent { scene, sprite_id });
 }
 
+struct UpdateComponent {
+    custom_update: fn(transform: &mut TransformComponent),
+}
+
+impl UpdateComponent {
+    fn update(&self, transform: &mut TransformComponent) {
+        (self.custom_update)(transform);
+    }
+}
+
+pub fn add_update_component(
+    ecs: &mut ECS,
+    entity: usize,
+    custom_update: fn(transform: &mut TransformComponent),
+) {
+    ecs.updates[entity] = Some(UpdateComponent { custom_update });
+}
+
 pub fn render(ecs: &mut ECS, window: &mut Window, event: &Event) {
+    window.draw_2d(event, |_, gfx, _| {
+        clear([0.0, 0.0, 0.0, 0.0], gfx);
+    });
     for (position, _) in ecs.entities.iter().enumerate() {
         if let Some(sprite_component) = &mut ecs.sprites[position] {
             sprite_component.render(window, &event);
@@ -108,9 +132,12 @@ pub fn render(ecs: &mut ECS, window: &mut Window, event: &Event) {
 }
 
 pub fn update(ecs: &mut ECS) {
-    for (position, _) in ecs.entities.iter().enumerate() {
+    for (position, _) in (&ecs.entities).iter().enumerate() {
         if let Some(sprite_component) = &mut ecs.sprites[position] {
             sprite_component.update(&ecs.transforms[position]);
+        }
+        if let Some(update_component) = &ecs.updates[position] {
+            update_component.update(&mut ecs.transforms[position]);
         }
     }
 }
