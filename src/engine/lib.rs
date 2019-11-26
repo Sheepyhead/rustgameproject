@@ -12,14 +12,16 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(title: &str, size: (f64, f64)) -> Game {
+    pub fn new(title: &str, size: (f64, f64), framerate: u64) -> Game {
         let opengl = OpenGL::V3_2;
 
-        let main_window = WindowSettings::new(title, [size.0, size.1])
+        let mut main_window: Window = WindowSettings::new(title, [size.0, size.1])
             .graphics_api(opengl)
             .exit_on_esc(true)
             .build()
             .unwrap();
+
+        main_window.set_max_fps(framerate);
 
         Game {
             ecs: entitycomponentsystem::ECS::new(),
@@ -51,13 +53,23 @@ pub fn add_update_component(
 }
 
 pub fn run(game: &mut Game) {
+    let mut frames = 0;
+    let mut time_passed = 0.0;
     loop {
         if let Some(event) = game.main_window.next() {
             //dbg!(&event);
             if let Some(_) = event.render_args() {
                 render(game, &event);
+                frames += 1;
             }
-            if let Some(_) = event.update_args() {
+            if let Some(update_args) = event.update_args() {
+                time_passed += update_args.dt;
+                if time_passed > 1.0 {
+                    let fps = (frames as f64) / time_passed;
+                    dbg!(fps);
+                    frames = 0;
+                    time_passed = 0.0
+                }
                 update(game);
             }
             if let Some(key_pressed) = event.press_args() {
