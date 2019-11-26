@@ -53,6 +53,7 @@ pub fn add_update_component(
 pub fn run(game: &mut Game) {
     loop {
         if let Some(event) = game.main_window.next() {
+            //dbg!(&event);
             if let Some(_) = event.render_args() {
                 render(game, &event);
             }
@@ -66,6 +67,9 @@ pub fn run(game: &mut Game) {
                         _ => (),
                     }
                 }
+            }
+            if let Some(_) = event.close_args() {
+                break;
             }
         }
     }
