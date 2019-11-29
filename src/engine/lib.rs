@@ -2,13 +2,17 @@ use opengl_graphics::OpenGL;
 use piston::window::WindowSettings;
 use piston_window::PistonWindow as Window;
 use piston_window::*;
+use specs::Entity;
+use specs::{Builder, ReadStorage, RunNow, System, World, WorldExt};
 pub use uuid::Uuid;
 
+pub mod components;
 pub mod entitycomponentsystem;
 
 pub struct Game {
     ecs: entitycomponentsystem::ECS,
     main_window: Window,
+    world: World,
 }
 
 impl Game {
@@ -23,15 +27,23 @@ impl Game {
 
         main_window.set_max_fps(framerate);
 
+        let mut world = World::new();
+        world.register::<components::Position>();
+        world.register::<components::Velocity>();
+
         Game {
             ecs: entitycomponentsystem::ECS::new(),
             main_window,
+            world,
         }
     }
 }
 
-pub fn new_entity(game: &mut Game, x: f64, y: f64, size: f64, rotation: f64) -> usize {
-    entitycomponentsystem::new_entity(&mut game.ecs, x, y, size, rotation)
+pub fn new_entity(game: &mut Game, x: f32, y: f32, size: f64, rotation: f64) -> Entity {
+    game.world
+        .create_entity()
+        .with(components::Position { x, y })
+        .build()
 }
 
 pub fn add_sprite_component(game: &mut Game, entity: usize, file_name: &str) {
@@ -55,6 +67,11 @@ pub fn add_update_component(
 pub fn run(game: &mut Game) {
     let mut frames = 0;
     let mut time_passed = 0.0;
+
+    let mut hello_world = HelloWorld;
+    hello_world.run_now(&game.world);
+    game.world.maintain();
+
     loop {
         if let Some(event) = game.main_window.next() {
             //dbg!(&event);
@@ -93,4 +110,18 @@ fn render(game: &mut Game, event: &Event) {
 
 fn update(game: &mut Game) {
     entitycomponentsystem::update(&mut game.ecs);
+}
+
+struct HelloWorld;
+
+impl<'a> System<'a> for HelloWorld {
+    type SystemData = ReadStorage<'a, components::Position>;
+
+    fn run(&mut self, position: Self::SystemData) {
+        use specs::Join;
+
+        for position in position.join() {
+            println!("Hello, {:?}", &position);
+        }
+    }
 }
