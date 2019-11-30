@@ -1,133 +1,96 @@
 use components::*;
-use opengl_graphics::OpenGL;
-use piston_window::PistonWindow as Window;
-use piston_window::*;
+use ggez::conf::WindowMode;
+use ggez::conf::WindowSetup;
+use ggez::event;
+use ggez::event::EventHandler;
+use ggez::event::EventsLoop;
+use ggez::graphics;
+use ggez::timer;
+use ggez::Context;
+use ggez::ContextBuilder;
+use ggez::GameResult;
 use resources::*;
-use specs::{Builder, DispatcherBuilder, Entity, World, WorldExt};
+use specs::Dispatcher;
+use specs::EntityBuilder;
+pub use specs::{Builder, DispatcherBuilder, Entity, World, WorldExt};
 use systems::*;
 pub use uuid::Uuid;
 
 pub mod components;
-pub mod entitycomponentsystem;
 pub mod resources;
 pub mod systems;
 
-pub struct Game {
-    ecs: entitycomponentsystem::ECS,
-    main_window: Window,
+pub struct Game<'a, 'b> {
     world: World,
+    dispatcher: Dispatcher<'a, 'b>,
 }
 
-impl Game {
-    pub fn new(title: &str, size: (f64, f64), framerate: u64) -> Game {
-        let opengl = OpenGL::V3_2;
-
-        let mut main_window: Window = WindowSettings::new(title, [size.0, size.1])
-            .graphics_api(opengl)
-            .exit_on_esc(true)
-            .build()
-            .unwrap();
-
-        main_window.set_max_fps(framerate);
-
+impl Game<'_, '_> {
+    pub fn new(title: &str, size: (f32, f32)) -> (Game, Context, EventsLoop) {
         let mut world = World::new();
         world.register::<Transform>();
         world.register::<Velocity>();
 
-        Game {
-            ecs: entitycomponentsystem::ECS::new(),
-            main_window,
-            world,
-        }
+        let dispatcher = DispatcherBuilder::new()
+            .with(HelloWorld, "hello_world", &[])
+            .with(UpdatePos, "update_pos", &["hello_world"])
+            .with(HelloWorld, "hello_updated", &["update_pos"])
+            .build();
+        world.insert(DeltaTime(0.0));
+
+        let (context, event_loop) = ContextBuilder::new(title, "TEST")
+            .window_mode(WindowMode {
+                width: size.0,
+                height: size.1,
+                ..Default::default()
+            })
+            .window_setup(WindowSetup {
+                title: String::from(title),
+                vsync: true,
+                ..Default::default()
+            })
+            .build()
+            .expect("Could not create ggez context!");
+        (Game { world, dispatcher }, context, event_loop)
     }
 }
 
-pub fn new_entity(game: &mut Game, x: f64, y: f64, size: f64, rotation: f64) -> Entity {
-    game.world
-        .create_entity()
-        .with(Transform {
-            x,
-            y,
-            size,
-            rotation,
-        })
-        .with(Velocity { x: 1.0, y: 1.0 })
-        .build()
-}
-
-pub fn add_sprite_component(game: &mut Game, entity: usize, file_name: &str) {
-    entitycomponentsystem::add_sprite_component(
-        &mut game.ecs,
-        entity,
-        file_name,
-        game.main_window.factory.clone(),
-        game.main_window.factory.create_command_buffer(),
-    )
-}
-
-pub fn add_update_component(
-    game: &mut Game,
-    entity: usize,
-    custom_update: fn(transform: &mut entitycomponentsystem::TransformComponent),
-) {
-    entitycomponentsystem::add_update_component(&mut game.ecs, entity, custom_update);
-}
-
-pub fn run(game: &mut Game) {
-    let mut frames = 0;
-    let mut time_passed = 0.0;
-
-    let mut dispatcher = DispatcherBuilder::new()
-        .with(HelloWorld, "hello_world", &[])
-        .with(UpdatePos, "update_pos", &["hello_world"])
-        .with(HelloWorld, "hello_updated", &["update_pos"])
-        .build();
-    game.world.insert(DeltaTime(0.0));
-
-    loop {
-        if let Some(event) = game.main_window.next() {
-            //dbg!(&event);
-            if let Some(_) = event.render_args() {
-                render(game, &event);
-                dispatcher.dispatch(&mut game.world);
-                game.world.maintain();
-                frames += 1;
-            }
-            if let Some(update_args) = event.update_args() {
-                time_passed += update_args.dt;
-                if time_passed > 1.0 {
-                    let fps = (frames as f64) / time_passed;
-                    dbg!(fps);
-                    frames = 0;
-                    time_passed = 0.0
-                }
-
-                {
-                    // Scoped so the pointer is thrown out as soon as it's no longer useful
-                    let mut delta = game.world.write_resource::<DeltaTime>();
-                    *delta = DeltaTime(update_args.dt);
-                }
-                update(game);
-            }
-            if let Some(key_pressed) = event.press_args() {
-                if let Button::Keyboard(key_pressed) = key_pressed {
-                    match key_pressed {
-                        Key::Escape => break,
-                        _ => (),
-                    }
-                }
-            }
-            if let Some(_) = event.close_args() {
-                break;
-            }
+impl EventHandler for Game<'_, '_> {
+    fn update(&mut self, context: &mut Context) -> GameResult<()> {
+        {
+            // Scoped so the pointer is thrown out as soon as it's no longer useful
+            let mut delta = self.world.write_resource::<DeltaTime>();
+            *delta = DeltaTime(timer::delta(context).as_secs_f64());
         }
+        Ok(())
+    }
+
+    fn draw(&mut self, context: &mut Context) -> GameResult<()> {
+        graphics::clear(context, graphics::BLACK);
+        self.dispatcher.dispatch(&mut self.world);
+        self.world.maintain();
+        graphics::present(context)
     }
 }
 
-fn render(game: &mut Game, event: &Event) {
-    entitycomponentsystem::render(&mut game.ecs, &mut game.main_window, event);
+pub fn create_entity<'a>(
+    (game, _, _): &'a mut (Game, Context, EventsLoop),
+    x: f64,
+    y: f64,
+    size: f64,
+    rotation: f64,
+) -> EntityBuilder<'a> {
+    game.world.create_entity().with(Transform {
+        x,
+        y,
+        size,
+        rotation,
+    })
 }
 
-fn update(game: &mut Game) {
-    entitycomponentsystem::update(&mut game.ecs);
+pub fn run((game, context, event_loop): &mut (Game, Context, EventsLoop)) {
+    match event::run(context, event_loop, game) {
+        Ok(_) => println!("Game exited cleanly"),
+        Err(e) => println!("Error occurred: {}", e),
+    }
 }

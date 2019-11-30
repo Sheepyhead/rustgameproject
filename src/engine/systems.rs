@@ -30,7 +30,7 @@ impl<'a> System<'a> for HelloWorld {
         use specs::Join;
 
         for transform in transform.join() {
-            println!("Hello, {:?}", &transform);
+            //println!("Hello, {:?}", &transform);
         }
     }
 }
