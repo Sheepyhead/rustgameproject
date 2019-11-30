@@ -1,13 +1,15 @@
-use components::{Position, Velocity};
+use components::*;
 use opengl_graphics::OpenGL;
 use piston_window::PistonWindow as Window;
 use piston_window::*;
+use resources::*;
 use specs::{Builder, DispatcherBuilder, Entity, World, WorldExt};
-use systems::{HelloWorld, UpdatePos};
+use systems::*;
 pub use uuid::Uuid;
 
 pub mod components;
 pub mod entitycomponentsystem;
+pub mod resources;
 pub mod systems;
 
 pub struct Game {
@@ -29,7 +31,7 @@ impl Game {
         main_window.set_max_fps(framerate);
 
         let mut world = World::new();
-        world.register::<Position>();
+        world.register::<Transform>();
         world.register::<Velocity>();
 
         Game {
@@ -40,8 +42,17 @@ impl Game {
     }
 }
 
-pub fn new_entity(game: &mut Game, x: f32, y: f32, size: f64, rotation: f64) -> Entity {
-    game.world.create_entity().with(Position { x, y }).with(Velocity { x: 10.0, y: 10.0 }).build()
+pub fn new_entity(game: &mut Game, x: f64, y: f64, size: f64, rotation: f64) -> Entity {
+    game.world
+        .create_entity()
+        .with(Transform {
+            x,
+            y,
+            size,
+            rotation,
+        })
+        .with(Velocity { x: 1.0, y: 1.0 })
+        .build()
 }
 
 pub fn add_sprite_component(game: &mut Game, entity: usize, file_name: &str) {
@@ -71,6 +82,7 @@ pub fn run(game: &mut Game) {
         .with(UpdatePos, "update_pos", &["hello_world"])
         .with(HelloWorld, "hello_updated", &["update_pos"])
         .build();
+    game.world.insert(DeltaTime(0.0));
 
     loop {
         if let Some(event) = game.main_window.next() {
@@ -88,6 +100,12 @@ pub fn run(game: &mut Game) {
                     dbg!(fps);
                     frames = 0;
                     time_passed = 0.0
+                }
+
+                {
+                    // Scoped so the pointer is thrown out as soon as it's no longer useful
+                    let mut delta = game.world.write_resource::<DeltaTime>();
+                    *delta = DeltaTime(update_args.dt);
                 }
                 update(game);
             }
