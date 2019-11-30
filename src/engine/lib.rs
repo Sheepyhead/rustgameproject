@@ -13,6 +13,7 @@ use resources::*;
 use specs::Dispatcher;
 use specs::EntityBuilder;
 pub use specs::{Builder, DispatcherBuilder, Entity, World, WorldExt};
+use std::rc::Rc;
 use systems::*;
 pub use uuid::Uuid;
 
@@ -31,13 +32,6 @@ impl Game<'_, '_> {
         world.register::<Transform>();
         world.register::<Velocity>();
 
-        let dispatcher = DispatcherBuilder::new()
-            .with(HelloWorld, "hello_world", &[])
-            .with(UpdatePos, "update_pos", &["hello_world"])
-            .with(HelloWorld, "hello_updated", &["update_pos"])
-            .build();
-        world.insert(DeltaTime(0.0));
-
         let (context, event_loop) = ContextBuilder::new(title, "TEST")
             .window_mode(WindowMode {
                 width: size.0,
@@ -51,6 +45,13 @@ impl Game<'_, '_> {
             })
             .build()
             .expect("Could not create ggez context!");
+        let dispatcher = DispatcherBuilder::new()
+            .with(HelloWorld, "hello_world", &[])
+            .with(UpdatePos, "update_pos", &["hello_world"])
+            .with(HelloWorld, "hello_updated", &["update_pos"])
+            .with_thread_local(Draw)
+            .build();
+        world.insert(DeltaTime(0.0));
         (Game { world, dispatcher }, context, event_loop)
     }
 }
@@ -93,4 +94,11 @@ pub fn run((game, context, event_loop): &mut (Game, Context, EventsLoop)) {
         Ok(_) => println!("Game exited cleanly"),
         Err(e) => println!("Error occurred: {}", e),
     }
+}
+
+pub fn load_image(
+    (_, context, _): &(Game, Context, EventsLoop),
+    filename: &str,
+) -> graphics::Image {
+    graphics::Image::new(context, format!("{}{}", "/assets/", filename)).unwrap()
 }

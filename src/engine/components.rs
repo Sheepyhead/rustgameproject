@@ -1,4 +1,5 @@
 use specs::{Component, VecStorage};
+use ggez::graphics;
 
 #[derive(Component, Debug)]
 #[storage(VecStorage)]
@@ -14,4 +15,10 @@ pub struct Transform {
 pub struct Velocity {
     pub x: f64,
     pub y: f64,
+}
+
+#[derive(Component, Debug)]
+#[storage(VecStorage)]
+pub struct Sprite {
+    image: graphics::Image,
 }
