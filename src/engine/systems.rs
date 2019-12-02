@@ -1,12 +1,14 @@
-use std::rc::Rc;
-use ggez::Context;
 use crate::components::*;
 use crate::resources::*;
+use ggez::Context;
 use specs::Join;
 use specs::Read;
 use specs::ReadStorage;
 use specs::System;
 use specs::WriteStorage;
+use ggez::graphics;
+use ggez::graphics::*;
+use ggez::nalgebra as na;
 
 pub struct UpdatePos;
 
@@ -26,21 +28,17 @@ impl<'a> System<'a> for UpdatePos {
     }
 }
 
-pub struct HelloWorld;
+pub struct Draw<'a> {
+    context: &'a mut Context,
+}
 
-impl<'a> System<'a> for HelloWorld {
-    type SystemData = ReadStorage<'a, Transform>;
-
-    fn run(&mut self, transform: Self::SystemData) {
-        for transform in transform.join() {
-            //println!("Hello, {:?}", &transform);
-        }
+impl<'a> Draw<'a> {
+    pub fn new(context: &'a mut Context) -> Draw<'a> {
+        Draw { context }
     }
 }
 
-pub struct Draw;
-
-impl<'a> System<'a> for Draw {
+impl<'a> System<'a> for Draw<'a> {
     type SystemData = (
         Read<'a, DeltaTime>,
         ReadStorage<'a, Transform>,
@@ -49,7 +47,7 @@ impl<'a> System<'a> for Draw {
 
     fn run(&mut self, (delta, transform, sprite): Self::SystemData) {
         for (transform, sprite) in (&transform, &sprite).join() {
-            
+            graphics::draw(self.context, &sprite.image, DrawParam::default().dest(na::Point2::new(transform.x as f32, transform.y as f32))).unwrap();
         }
     }
 }

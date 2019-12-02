@@ -10,10 +10,9 @@ use ggez::Context;
 use ggez::ContextBuilder;
 use ggez::GameResult;
 use resources::*;
-use specs::Dispatcher;
-use specs::EntityBuilder;
-pub use specs::{Builder, DispatcherBuilder, Entity, World, WorldExt};
-use std::rc::Rc;
+pub use specs::world::Builder;
+pub use specs::EntityBuilder;
+use specs::*;
 use systems::*;
 pub use uuid::Uuid;
 
@@ -31,6 +30,9 @@ impl Game<'_, '_> {
         let mut world = World::new();
         world.register::<Transform>();
         world.register::<Velocity>();
+        world.register::<Sprite>();
+        world.insert(DeltaTime(0.0));
+        
 
         let (context, event_loop) = ContextBuilder::new(title, "TEST")
             .window_mode(WindowMode {
@@ -46,12 +48,8 @@ impl Game<'_, '_> {
             .build()
             .expect("Could not create ggez context!");
         let dispatcher = DispatcherBuilder::new()
-            .with(HelloWorld, "hello_world", &[])
-            .with(UpdatePos, "update_pos", &["hello_world"])
-            .with(HelloWorld, "hello_updated", &["update_pos"])
-            .with_thread_local(Draw)
+            .with(UpdatePos, "update_pos", &[])
             .build();
-        world.insert(DeltaTime(0.0));
         (Game { world, dispatcher }, context, event_loop)
     }
 }
@@ -63,13 +61,20 @@ impl EventHandler for Game<'_, '_> {
             let mut delta = self.world.write_resource::<DeltaTime>();
             *delta = DeltaTime(timer::delta(context).as_secs_f64());
         }
+
+        self.dispatcher.dispatch(&mut self.world);
+        self.world.maintain();
         Ok(())
     }
 
     fn draw(&mut self, context: &mut Context) -> GameResult<()> {
         graphics::clear(context, graphics::BLACK);
-        self.dispatcher.dispatch(&mut self.world);
-        self.world.maintain();
+
+        {
+            let mut draw_system = Draw::new(context);
+            draw_system.run_now(&mut self.world);
+        }
+
         graphics::present(context)
     }
 }
@@ -97,8 +102,8 @@ pub fn run((game, context, event_loop): &mut (Game, Context, EventsLoop)) {
 }
 
 pub fn load_image(
-    (_, context, _): &(Game, Context, EventsLoop),
+    (_, context, _): &mut (Game, Context, EventsLoop),
     filename: &str,
 ) -> graphics::Image {
-    graphics::Image::new(context, format!("{}{}", "/assets/", filename)).unwrap()
+    graphics::Image::new(context, filename).unwrap()
 }
