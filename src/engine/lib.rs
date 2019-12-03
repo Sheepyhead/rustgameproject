@@ -15,8 +15,6 @@ use resources::*;
 pub use specs::world::Builder;
 use specs::*;
 pub use specs::{Entity, EntityBuilder};
-use std::cmp::Eq;
-use std::collections::HashMap;
 use systems::*;
 pub use uuid::Uuid;
 
@@ -44,7 +42,6 @@ fn register_components(world: &mut World) {
 
 fn insert_resources(world: &mut World) {
     world.insert(DeltaTime(0.0));
-    world.insert(None::<InputContext>);
 }
 
 pub fn new_game_state(title: &str, size: (f32, f32)) -> GameState {
@@ -89,7 +86,7 @@ impl EventHandler for ECS<'_, '_> {
             *input_context = InputContext {
                 keyboard_context: context.keyboard_context.clone(),
                 mouse_context: context.mouse_context.clone(),
-            }
+            };
         }
 
         self.dispatcher.dispatch(&mut self.world);

@@ -62,3 +62,16 @@ impl<'a> System<'a> for Draw<'a> {
         }
     }
 }
+
+pub struct Input;
+
+impl<'a> System<'a> for Input {
+    type SystemData = (Option<Read<'a, InputContext>>, ReadStorage<'a, Transform>);
+    fn run(&mut self, (input_context, transform): Self::SystemData) {
+        if let Some(input_context) = input_context {
+            for (transform) in (&transform).join() {
+
+            }
+        }
+    }
+}
