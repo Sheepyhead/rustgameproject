@@ -22,3 +22,8 @@ pub struct Velocity {
 pub struct Sprite {
     pub image: graphics::Image,
 }
+
+#[derive(Component, Debug)]
+#[storage(VecStorage)]
+pub struct Player {
+}

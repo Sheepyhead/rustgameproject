@@ -1,3 +1,4 @@
+use specs::Write;
 use crate::components::*;
 use crate::resources::*;
 use ggez::graphics;
@@ -9,6 +10,8 @@ use specs::Read;
 use specs::ReadStorage;
 use specs::System;
 use specs::WriteStorage;
+use ggez::input::keyboard;
+use ggez::input::keyboard::KeyCode;
 
 pub struct UpdatePos;
 
@@ -66,12 +69,9 @@ impl<'a> System<'a> for Draw<'a> {
 pub struct Input;
 
 impl<'a> System<'a> for Input {
-    type SystemData = (Option<Read<'a, InputContext>>, ReadStorage<'a, Transform>);
-    fn run(&mut self, (input_context, transform): Self::SystemData) {
+    type SystemData = (Option<Read<'a, InputContext>>, Write<'a, ActionContext>);
+    fn run(&mut self, (input_context, action_context): Self::SystemData) {
         if let Some(input_context) = input_context {
-            for (transform) in (&transform).join() {
-
-            }
         }
     }
 }
