@@ -34,7 +34,7 @@ impl ActionContext {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum PlayerAction {
     MoveNorth,
     MoveSouth,

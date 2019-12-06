@@ -12,6 +12,7 @@ use specs::ReadStorage;
 use specs::System;
 use specs::Write;
 use specs::WriteStorage;
+use std::collections::HashSet;
 
 pub struct UpdatePos;
 
@@ -74,41 +75,48 @@ impl<'a> System<'a> for Input {
         let pressed_keys = &input_context.pressed_keys;
         let active_mods = &input_context.active_mods;
 
-        if pressed_keys.contains(&KeyCode::Up) || pressed_keys.contains(&KeyCode::W) {
+        Input::map_keys(
+            &[KeyCode::Up, KeyCode::W].iter().cloned().collect(),
+            PlayerAction::MoveNorth,
+            &mut action_context,
+            pressed_keys,
+        );
+        Input::map_keys(
+            &[KeyCode::Down, KeyCode::S].iter().cloned().collect(),
+            PlayerAction::MoveSouth,
+            &mut action_context,
+            pressed_keys,
+        );
+        Input::map_keys(
+            &[KeyCode::Left, KeyCode::A].iter().cloned().collect(),
+            PlayerAction::MoveWest,
+            &mut action_context,
+            pressed_keys,
+        );
+        Input::map_keys(
+            &[KeyCode::Right, KeyCode::D].iter().cloned().collect(),
+            PlayerAction::MoveEast,
+            &mut action_context,
+            pressed_keys,
+        );
+    }
+}
+
+impl Input {
+    fn map_keys(
+        keys: &HashSet<KeyCode>,
+        action: PlayerAction,
+        action_context: &mut ActionContext,
+        pressed_keys: &HashSet<KeyCode>,
+    ) {
+        if pressed_keys.intersection(keys).count() > 0 {
             action_context
                 .player_action_map
-                .insert(PlayerAction::MoveNorth, true);
+                .insert(action, true);
         } else {
             action_context
                 .player_action_map
-                .insert(PlayerAction::MoveNorth, false);
-        }
-        if pressed_keys.contains(&KeyCode::Down) || pressed_keys.contains(&KeyCode::S) {
-            action_context
-                .player_action_map
-                .insert(PlayerAction::MoveSouth, true);
-        } else {
-            action_context
-                .player_action_map
-                .insert(PlayerAction::MoveSouth, false);
-        }
-        if pressed_keys.contains(&KeyCode::Left) || pressed_keys.contains(&KeyCode::A) {
-            action_context
-                .player_action_map
-                .insert(PlayerAction::MoveWest, true);
-        } else {
-            action_context
-                .player_action_map
-                .insert(PlayerAction::MoveWest, false);
-        }
-        if pressed_keys.contains(&KeyCode::Right) || pressed_keys.contains(&KeyCode::D) {
-            action_context
-                .player_action_map
-                .insert(PlayerAction::MoveEast, true);
-        } else {
-            action_context
-                .player_action_map
-                .insert(PlayerAction::MoveEast, false);
+                .insert(action, false);
         }
     }
 }
