@@ -1,17 +1,17 @@
-use specs::Write;
 use crate::components::*;
 use crate::resources::*;
 use ggez::graphics;
 use ggez::graphics::*;
+use ggez::input::keyboard::KeyCode;
 use ggez::nalgebra as na;
 use ggez::Context;
 use specs::Join;
 use specs::Read;
+use specs::ReadExpect;
 use specs::ReadStorage;
 use specs::System;
+use specs::Write;
 use specs::WriteStorage;
-use ggez::input::keyboard;
-use ggez::input::keyboard::KeyCode;
 
 pub struct UpdatePos;
 
@@ -69,9 +69,68 @@ impl<'a> System<'a> for Draw<'a> {
 pub struct Input;
 
 impl<'a> System<'a> for Input {
-    type SystemData = (Option<Read<'a, InputContext>>, Write<'a, ActionContext>);
-    fn run(&mut self, (input_context, action_context): Self::SystemData) {
-        if let Some(input_context) = input_context {
+    type SystemData = (ReadExpect<'a, InputContext>, Write<'a, ActionContext>);
+    fn run(&mut self, (input_context, mut action_context): Self::SystemData) {
+        let pressed_keys = &input_context.pressed_keys;
+        let active_mods = &input_context.active_mods;
+
+        if pressed_keys.contains(&KeyCode::Up) || pressed_keys.contains(&KeyCode::W) {
+            action_context
+                .player_action_map
+                .insert(PlayerAction::MoveNorth, true);
+        } else {
+            action_context
+                .player_action_map
+                .insert(PlayerAction::MoveNorth, false);
+        }
+        if pressed_keys.contains(&KeyCode::Down) || pressed_keys.contains(&KeyCode::S) {
+            action_context
+                .player_action_map
+                .insert(PlayerAction::MoveSouth, true);
+        } else {
+            action_context
+                .player_action_map
+                .insert(PlayerAction::MoveSouth, false);
+        }
+        if pressed_keys.contains(&KeyCode::Left) || pressed_keys.contains(&KeyCode::A) {
+            action_context
+                .player_action_map
+                .insert(PlayerAction::MoveWest, true);
+        } else {
+            action_context
+                .player_action_map
+                .insert(PlayerAction::MoveWest, false);
+        }
+        if pressed_keys.contains(&KeyCode::Right) || pressed_keys.contains(&KeyCode::D) {
+            action_context
+                .player_action_map
+                .insert(PlayerAction::MoveEast, true);
+        } else {
+            action_context
+                .player_action_map
+                .insert(PlayerAction::MoveEast, false);
+        }
+    }
+}
+
+pub struct Act;
+
+impl<'a> System<'a> for Act {
+    type SystemData = (Read<'a, ActionContext>, WriteStorage<'a, Transform>);
+    fn run(&mut self, (action_context, mut transform): Self::SystemData) {
+        for transform in (&mut transform).join() {
+            if action_context.player_action_map[&PlayerAction::MoveNorth] {
+                transform.y -= 10.0;
+            }
+            if action_context.player_action_map[&PlayerAction::MoveSouth] {
+                transform.y += 10.0;
+            }
+            if action_context.player_action_map[&PlayerAction::MoveEast] {
+                transform.x += 10.0;
+            }
+            if action_context.player_action_map[&PlayerAction::MoveWest] {
+                transform.x -= 10.0;
+            }
         }
     }
 }

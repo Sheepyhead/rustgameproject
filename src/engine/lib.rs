@@ -41,7 +41,6 @@ fn register_components(world: &mut World) {
 
 fn insert_resources(world: &mut World) {
     world.insert(DeltaTime(0.0));
-    world.insert::<Option<InputContext>>(None);
     world.insert(ActionContext::new())
 }
 
@@ -66,6 +65,8 @@ pub fn new_game_state(title: &str, size: (f32, f32)) -> GameState {
 
     let dispatcher = DispatcherBuilder::new()
         .with(UpdatePos, "update_pos", &[])
+        .with(Input, "input", &[])
+        .with(Act, "act", &["input"])
         .build();
     GameState {
         ecs: ECS { world, dispatcher },
@@ -82,11 +83,18 @@ impl EventHandler for ECS<'_, '_> {
             *delta = DeltaTime(timer::delta(context).as_secs_f64());
         }
         {
-            let mut input_context = self.world.write_resource::<Option<InputContext>>();
-            *input_context = Some(InputContext {
-                keyboard_context: context.keyboard_context.clone(),
+            let input = InputContext {
+                pressed_keys: pressed_keys(context).clone(),
+                active_mods: active_mods(context),
                 mouse_context: context.mouse_context.clone(),
-            });
+            };
+            if !self.world.has_value::<InputContext>() {
+                self.world.insert(input);
+            } else {
+                let mut input_context = self.world.write_resource::<InputContext>();
+                // dbg!(input.as_ref());
+                *input_context = input;
+            }
         }
 
         self.dispatcher.dispatch(&mut self.world);

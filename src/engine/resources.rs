@@ -1,24 +1,27 @@
-use ggez::input::keyboard::KeyboardContext;
+use std::collections::HashSet;
+use ggez::input::keyboard::KeyMods;
+use ggez::event::KeyCode;
 use ggez::input::mouse::MouseContext;
 use std::collections::HashMap;
 
 #[derive(Default)]
 pub struct DeltaTime(pub f64);
 
-#[derive(Default)]
+#[derive(Debug)]
 pub struct InputContext {
-    pub keyboard_context: KeyboardContext,
+    pub pressed_keys: HashSet<KeyCode>,
+    pub active_mods: KeyMods,
     pub mouse_context: MouseContext,
 }
 
 #[derive(Default)]
 pub struct ActionContext {
-    player_action_map: HashMap<PlayerAction, bool>,
+    pub player_action_map: HashMap<PlayerAction, bool>,
 }
 
 impl ActionContext {
     pub fn new() -> ActionContext {
-        let mut player_action_map: HashMap<PlayerAction, bool> = [
+        let player_action_map: HashMap<PlayerAction, bool> = [
             (PlayerAction::MoveNorth, false),
             (PlayerAction::MoveSouth, false),
             (PlayerAction::MoveWest, false),
@@ -32,7 +35,7 @@ impl ActionContext {
 }
 
 #[derive(PartialEq, Eq, Hash, Clone)]
-enum PlayerAction {
+pub enum PlayerAction {
     MoveNorth,
     MoveSouth,
     MoveWest,
