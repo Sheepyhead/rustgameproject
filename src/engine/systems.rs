@@ -122,22 +122,24 @@ pub struct Act;
 impl<'a> System<'a> for Act {
     type SystemData = (
         ReadStorage<'a, Player>,
+        WriteStorage<'a, Velocity>,
         Read<'a, ActionContext>,
-        WriteStorage<'a, Transform>,
     );
-    fn run(&mut self, (player, action_context, mut transform): Self::SystemData) {
-        for (_, transform) in (&player, &mut transform).join() {
+    fn run(&mut self, (player, mut velocity, action_context): Self::SystemData) {
+        for (_, velocity) in (&player, &mut velocity).join() {
             if action_context.player_action_map[&PlayerAction::MoveNorth] {
-                transform.y -= 10.0;
-            }
-            if action_context.player_action_map[&PlayerAction::MoveSouth] {
-                transform.y += 10.0;
+                velocity.y = -1000.0;
+            } else if action_context.player_action_map[&PlayerAction::MoveSouth] {
+                velocity.y = 1000.0;
+            } else {
+                velocity.y = 0.0;
             }
             if action_context.player_action_map[&PlayerAction::MoveEast] {
-                transform.x += 10.0;
-            }
-            if action_context.player_action_map[&PlayerAction::MoveWest] {
-                transform.x -= 10.0;
+                velocity.x = 1000.0;
+            } else if action_context.player_action_map[&PlayerAction::MoveWest] {
+                velocity.x = -1000.0;
+            } else {
+                velocity.x = 0.0;
             }
         }
     }
