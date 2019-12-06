@@ -1,3 +1,4 @@
+use specs::NullStorage;
 use ggez::graphics;
 use specs::{Component, VecStorage};
 
@@ -23,7 +24,6 @@ pub struct Sprite {
     pub image: graphics::Image,
 }
 
-#[derive(Component, Debug)]
-#[storage(VecStorage)]
-pub struct Player {
-}
+#[derive(Component, Debug, Default)]
+#[storage(NullStorage)]
+pub struct Player {}

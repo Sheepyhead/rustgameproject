@@ -14,5 +14,6 @@ fn create_player(game: &mut GameState) -> Entity {
     engine::create_entity(game, 400.0, 400.0, 3.0, 0.0)
         .with(Sprite { image })
         .with(Velocity { x: 0.0, y: 0.0 })
+        .with(Player {})
         .build()
 }

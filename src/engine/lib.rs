@@ -37,6 +37,7 @@ fn register_components(world: &mut World) {
     world.register::<Transform>();
     world.register::<Velocity>();
     world.register::<Sprite>();
+    world.register::<Player>();
 }
 
 fn insert_resources(world: &mut World) {

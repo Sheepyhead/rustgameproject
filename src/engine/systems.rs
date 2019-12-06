@@ -110,13 +110,9 @@ impl Input {
         pressed_keys: &HashSet<KeyCode>,
     ) {
         if pressed_keys.intersection(keys).count() > 0 {
-            action_context
-                .player_action_map
-                .insert(action, true);
+            action_context.player_action_map.insert(action, true);
         } else {
-            action_context
-                .player_action_map
-                .insert(action, false);
+            action_context.player_action_map.insert(action, false);
         }
     }
 }
@@ -124,9 +120,13 @@ impl Input {
 pub struct Act;
 
 impl<'a> System<'a> for Act {
-    type SystemData = (Read<'a, ActionContext>, WriteStorage<'a, Transform>);
-    fn run(&mut self, (action_context, mut transform): Self::SystemData) {
-        for transform in (&mut transform).join() {
+    type SystemData = (
+        ReadStorage<'a, Player>,
+        Read<'a, ActionContext>,
+        WriteStorage<'a, Transform>,
+    );
+    fn run(&mut self, (player, action_context, mut transform): Self::SystemData) {
+        for (_, transform) in (&player, &mut transform).join() {
             if action_context.player_action_map[&PlayerAction::MoveNorth] {
                 transform.y -= 10.0;
             }
