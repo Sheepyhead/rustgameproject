@@ -1,5 +1,5 @@
-use specs::NullStorage;
 use ggez::graphics;
+use specs::DenseVecStorage;
 use specs::{Component, VecStorage};
 
 #[derive(Component, Debug)]
@@ -25,5 +25,7 @@ pub struct Sprite {
 }
 
 #[derive(Component, Debug, Default)]
-#[storage(NullStorage)]
-pub struct Player {}
+#[storage(DenseVecStorage)]
+pub struct Player {
+    pub movement_speed: f64,
+}

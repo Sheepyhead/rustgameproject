@@ -126,18 +126,18 @@ impl<'a> System<'a> for Act {
         Read<'a, ActionContext>,
     );
     fn run(&mut self, (player, mut velocity, action_context): Self::SystemData) {
-        for (_, velocity) in (&player, &mut velocity).join() {
+        for (player, velocity) in (&player, &mut velocity).join() {
             if action_context.player_action_map[&PlayerAction::MoveNorth] {
-                velocity.y = -1000.0;
+                velocity.y = -player.movement_speed;
             } else if action_context.player_action_map[&PlayerAction::MoveSouth] {
-                velocity.y = 1000.0;
+                velocity.y = player.movement_speed;
             } else {
                 velocity.y = 0.0;
             }
             if action_context.player_action_map[&PlayerAction::MoveEast] {
-                velocity.x = 1000.0;
+                velocity.x = player.movement_speed;
             } else if action_context.player_action_map[&PlayerAction::MoveWest] {
-                velocity.x = -1000.0;
+                velocity.x = -player.movement_speed;
             } else {
                 velocity.x = 0.0;
             }

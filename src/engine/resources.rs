@@ -1,8 +1,8 @@
-use std::collections::HashSet;
-use ggez::input::keyboard::KeyMods;
 use ggez::event::KeyCode;
+use ggez::input::keyboard::KeyMods;
 use ggez::input::mouse::MouseContext;
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 #[derive(Default)]
 pub struct DeltaTime(pub f64);
