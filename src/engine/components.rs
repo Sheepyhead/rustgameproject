@@ -1,3 +1,4 @@
+use specs::Entity;
 use ggez::graphics;
 use specs::DenseVecStorage;
 use specs::{Component, VecStorage};
@@ -28,4 +29,32 @@ pub struct Sprite {
 #[storage(DenseVecStorage)]
 pub struct Player {
     pub movement_speed: f64,
+}
+
+#[derive(Component, Debug, Default)]
+#[storage(VecStorage)]
+pub struct BoxCollider {
+    pub width: f64,
+    pub height: f64,
+}
+
+impl BoxCollider {
+    pub fn collides_with(
+        &self,
+        self_transform: &Transform,
+        other: &BoxCollider,
+        other_transform: &Transform,
+    ) -> bool {
+        // Expression courtesy of https://stackoverflow.com/a/306332
+        self_transform.x - self.width / 2.0 < other_transform.x + other.width / 2.0
+            && self_transform.x + self.width / 2.0 > other_transform.x - other.width / 2.0
+            && self_transform.y - self.height / 2.0 > other_transform.y + other.height / 2.0
+            && self_transform.y + self.height / 2.0 < other_transform.y - other.height / 2.0
+    }
+}
+
+#[derive(Component, Debug, Default)]
+#[storage(VecStorage)]
+pub struct BoxCollisions {
+    pub entities: Vec<Entity>,
 }
