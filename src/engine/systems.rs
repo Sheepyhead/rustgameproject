@@ -5,6 +5,8 @@ use ggez::graphics::*;
 use ggez::input::keyboard::KeyCode;
 use ggez::nalgebra as na;
 use ggez::Context;
+use specs::world::EntitiesRes;
+use specs::Entities;
 use specs::Join;
 use specs::Read;
 use specs::ReadExpect;
@@ -47,10 +49,14 @@ impl<'a> System<'a> for Draw<'a> {
         Read<'a, DeltaTime>,
         ReadStorage<'a, Transform>,
         ReadStorage<'a, Sprite>,
+        ReadStorage<'a, BoxCollider>,
     );
 
-    fn run(&mut self, (delta, transform, sprite): Self::SystemData) {
-        for (transform, sprite) in (&transform, &sprite).join() {
+    fn run(
+        &mut self,
+        (delta, transform_storage, sprite_storage, collider_storage): Self::SystemData,
+    ) {
+        for (transform, sprite) in (&transform_storage, &sprite_storage).join() {
             graphics::draw(
                 self.context,
                 &sprite.image,
@@ -63,6 +69,24 @@ impl<'a> System<'a> for Draw<'a> {
                 },
             )
             .expect(&format!("Failed drawing sprite {:?}", sprite.image));
+        }
+
+        for (transform, collider) in (&transform_storage, &collider_storage).join() {
+            let rectangle = graphics::Mesh::new_rectangle(
+                self.context,
+                graphics::DrawMode::stroke(1.0),
+                Rect::new(
+                    (transform.x - collider.width / 2.0) as f32,
+                    (transform.y - collider.height / 2.0) as f32,
+                    collider.width as f32,
+                    collider.height as f32,
+                ),
+                Color::new(0.0, 1.0, 0.0, 1.0),
+            )
+            .expect("Creating collider rectangle failed!");
+
+            graphics::draw(self.context, &rectangle, (na::Point2::new(0.0, 0.0),))
+                .expect("Drawing collider rectangle failed!");
         }
     }
 }
@@ -140,6 +164,45 @@ impl<'a> System<'a> for Act {
                 velocity.x = -player.movement_speed;
             } else {
                 velocity.x = 0.0;
+            }
+        }
+    }
+}
+
+pub struct Collide;
+
+impl<'a> System<'a> for Collide {
+    type SystemData = (
+        ReadStorage<'a, BoxCollider>,
+        ReadStorage<'a, Transform>,
+        Entities<'a>,
+        WriteStorage<'a, BoxCollisions>,
+    );
+
+    fn run(
+        &mut self,
+        (collider_storage, transform_storage, entity_storage, mut collisions_storage): Self::SystemData,
+    ) {
+        for (from_collider, from_transform, from_entity) in
+            (&collider_storage, &transform_storage, &*entity_storage).join()
+        {
+            let collisions = collisions_storage
+                .get_mut(from_entity)
+                .expect("Entity with box collider missing box collision component!");
+            collisions.entities.clear();
+            for (to_collider, to_transform, to_entity) in
+                (&collider_storage, &transform_storage, &*entity_storage).join()
+            {
+                if from_entity != to_entity {
+                    if from_collider.collides_with(from_transform, to_collider, to_transform) {
+                        dbg!(
+                            "Detected collision between {:?} and {:?}",
+                            &from_entity,
+                            &to_entity
+                        );
+                        collisions.entities.push(to_entity);
+                    }
+                }
             }
         }
     }

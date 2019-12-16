@@ -38,11 +38,13 @@ fn register_components(world: &mut World) {
     world.register::<Velocity>();
     world.register::<Sprite>();
     world.register::<Player>();
+    world.register::<BoxCollider>();
+    world.register::<BoxCollisions>();
 }
 
 fn insert_resources(world: &mut World) {
     world.insert(DeltaTime(0.0));
-    world.insert(ActionContext::new())
+    world.insert(ActionContext::new());
 }
 
 pub fn new_game_state(title: &str, size: (f32, f32)) -> GameState {
