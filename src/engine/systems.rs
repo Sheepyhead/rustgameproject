@@ -50,11 +50,13 @@ impl<'a> System<'a> for Draw<'a> {
         ReadStorage<'a, Transform>,
         ReadStorage<'a, Sprite>,
         ReadStorage<'a, BoxCollider>,
+        ReadStorage<'a, BoxCollisions>,
+        Read<'a, GameOptions>,
     );
 
     fn run(
         &mut self,
-        (delta, transform_storage, sprite_storage, collider_storage): Self::SystemData,
+        (delta, transform_storage, sprite_storage, collider_storage, collision_storage, options): Self::SystemData,
     ) {
         for (transform, sprite) in (&transform_storage, &sprite_storage).join() {
             graphics::draw(
@@ -70,23 +72,33 @@ impl<'a> System<'a> for Draw<'a> {
             )
             .expect(&format!("Failed drawing sprite {:?}", sprite.image));
         }
+        if options.draw_colliders {
+            for (transform, collider, collision) in
+                (&transform_storage, &collider_storage, &collision_storage).join()
+            {
+                let mut color = Color::new(0.0, 1.0, 0.0, 1.0);
+                if collision.entities.len() > 0 {
+                    color.g = 0.0;
+                    color.r = 1.0;
+                }
+                let rectangle = graphics::Mesh::new_rectangle(
+                    self.context,
+                    graphics::DrawMode::stroke(1.0),
+                    Rect::new(
+                        (transform.x - collider.width / 2.0) as f32,
+                        (transform.y - collider.height / 2.0) as f32,
+                        collider.width as f32,
+                        collider.height as f32,
+                    ),
+                    color,
+                )
+                .expect("Creating collider rectangle failed!");
 
-        for (transform, collider) in (&transform_storage, &collider_storage).join() {
-            let rectangle = graphics::Mesh::new_rectangle(
-                self.context,
-                graphics::DrawMode::stroke(1.0),
-                Rect::new(
-                    (transform.x - collider.width / 2.0) as f32,
-                    (transform.y - collider.height / 2.0) as f32,
-                    collider.width as f32,
-                    collider.height as f32,
-                ),
-                Color::new(0.0, 1.0, 0.0, 1.0),
-            )
-            .expect("Creating collider rectangle failed!");
-
-            graphics::draw(self.context, &rectangle, (na::Point2::new(0.0, 0.0),))
-                .expect("Drawing collider rectangle failed!");
+                graphics::draw(self.context, &rectangle, (na::Point2::new(0.0, 0.0),)).expect(
+                    "Drawing co
+                llider rectangle failed!",
+                );
+            }
         }
     }
 }
@@ -94,9 +106,10 @@ impl<'a> System<'a> for Draw<'a> {
 pub struct Input;
 
 impl<'a> System<'a> for Input {
-    type SystemData = (ReadExpect<'a, InputContext>, Write<'a, ActionContext>);
-    fn run(&mut self, (input_context, mut action_context): Self::SystemData) {
+    type SystemData = (ReadExpect<'a, InputContext>, Write<'a, ActionContext>, Write<'a, GameOptions>);
+    fn run(&mut self, (input_context, mut action_context, mut options): Self::SystemData) {
         let pressed_keys = &input_context.pressed_keys;
+        let last_pressed_keys = &input_context.last_pressed_keys;
         let active_mods = &input_context.active_mods;
 
         Input::map_keys(
@@ -123,6 +136,10 @@ impl<'a> System<'a> for Input {
             &mut action_context,
             pressed_keys,
         );
+
+        if pressed_keys.contains(&KeyCode::F1) && !last_pressed_keys.contains(&KeyCode::F1) {
+            options.draw_colliders = !options.draw_colliders;
+        }
     }
 }
 
@@ -195,11 +212,6 @@ impl<'a> System<'a> for Collide {
             {
                 if from_entity != to_entity {
                     if from_collider.collides_with(from_transform, to_collider, to_transform) {
-                        dbg!(
-                            "Detected collision between {:?} and {:?}",
-                            &from_entity,
-                            &to_entity
-                        );
                         collisions.entities.push(to_entity);
                     }
                 }

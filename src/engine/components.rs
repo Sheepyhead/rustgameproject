@@ -45,11 +45,11 @@ impl BoxCollider {
         other: &BoxCollider,
         other_transform: &Transform,
     ) -> bool {
-        // Expression courtesy of https://stackoverflow.com/a/306332
+        // Expression courtesy of https://stackoverflow.com/a/306332 modified to suit an upper-left coordinate system
         self_transform.x - self.width / 2.0 < other_transform.x + other.width / 2.0
             && self_transform.x + self.width / 2.0 > other_transform.x - other.width / 2.0
-            && self_transform.y - self.height / 2.0 > other_transform.y + other.height / 2.0
-            && self_transform.y + self.height / 2.0 < other_transform.y - other.height / 2.0
+            && self_transform.y - self.height / 2.0 < other_transform.y + other.height / 2.0
+            && self_transform.y + self.height / 2.0 > other_transform.y - other.height / 2.0
     }
 }
 
