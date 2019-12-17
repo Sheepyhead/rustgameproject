@@ -17,6 +17,7 @@ use specs::*;
 pub use specs::{Entity, EntityBuilder};
 use systems::*;
 pub use uuid::Uuid;
+use std::collections::HashSet;
 
 pub mod components;
 pub mod resources;
@@ -45,6 +46,9 @@ fn register_components(world: &mut World) {
 fn insert_resources(world: &mut World) {
     world.insert(DeltaTime(0.0));
     world.insert(ActionContext::new());
+    world.insert(GameOptions {
+        draw_colliders: false
+    });
 }
 
 pub fn new_game_state(title: &str, size: (f32, f32)) -> GameState {
@@ -70,6 +74,7 @@ pub fn new_game_state(title: &str, size: (f32, f32)) -> GameState {
         .with(UpdatePos, "update_pos", &[])
         .with(Input, "input", &[])
         .with(Act, "act", &["input"])
+        .with(Collide, "collide", &[])
         .build();
     GameState {
         ecs: ECS { world, dispatcher },
@@ -86,8 +91,9 @@ impl EventHandler for ECS<'_, '_> {
             *delta = DeltaTime(timer::delta(context).as_secs_f64());
         }
         {
-            let input = InputContext {
+            let mut input = InputContext {
                 pressed_keys: pressed_keys(context).clone(),
+                last_pressed_keys: HashSet::new(),
                 active_mods: active_mods(context),
                 mouse_context: context.mouse_context.clone(),
             };
@@ -95,7 +101,7 @@ impl EventHandler for ECS<'_, '_> {
                 self.world.insert(input);
             } else {
                 let mut input_context = self.world.write_resource::<InputContext>();
-                // dbg!(input.as_ref());
+                input.last_pressed_keys = input_context.pressed_keys.clone();
                 *input_context = input;
             }
         }

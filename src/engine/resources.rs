@@ -10,6 +10,7 @@ pub struct DeltaTime(pub f64);
 #[derive(Debug)]
 pub struct InputContext {
     pub pressed_keys: HashSet<KeyCode>,
+    pub last_pressed_keys: HashSet<KeyCode>,
     pub active_mods: KeyMods,
     pub mouse_context: MouseContext,
 }
@@ -40,4 +41,9 @@ pub enum PlayerAction {
     MoveSouth,
     MoveWest,
     MoveEast,
+}
+
+#[derive(Default, Debug)]
+pub struct GameOptions {
+    pub draw_colliders: bool,
 }
