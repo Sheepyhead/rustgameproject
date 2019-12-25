@@ -2,6 +2,7 @@ use specs::Entity;
 use ggez::graphics;
 use specs::DenseVecStorage;
 use specs::{Component, VecStorage};
+use cgmath::Vector2;
 
 #[derive(Component, Debug)]
 #[storage(VecStorage)]
@@ -15,8 +16,7 @@ pub struct Transform {
 #[derive(Component, Debug)]
 #[storage(VecStorage)]
 pub struct Velocity {
-    pub x: f64,
-    pub y: f64,
+    pub vector: Vector2<f64>,
 }
 
 #[derive(Component, Debug)]
@@ -36,6 +36,14 @@ pub struct Player {
 pub struct BoxCollider {
     pub width: f64,
     pub height: f64,
+    pub solid: bool,
+}
+
+pub enum BoxColliderSide {
+    Up,
+    Right,
+    Down,
+    Left,
 }
 
 impl BoxCollider {

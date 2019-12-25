@@ -21,15 +21,32 @@ pub struct UpdatePos;
 impl<'a> System<'a> for UpdatePos {
     type SystemData = (
         Read<'a, DeltaTime>,
-        ReadStorage<'a, Velocity>,
+        WriteStorage<'a, Velocity>,
         WriteStorage<'a, Transform>,
+        ReadStorage<'a, BoxCollider>,
+        ReadStorage<'a, BoxCollisions>,
+        Entities<'a>,
     );
 
-    fn run(&mut self, (delta, vel, mut pos): Self::SystemData) {
+    fn run(
+        &mut self,
+        (delta, mut vel, mut transform_storage, collider_storage, collision_storage, entity_storage): Self::SystemData,
+    ) {
         let delta = delta.0;
-        for (vel, pos) in (&vel, &mut pos).join() {
-            pos.x += vel.x * delta;
-            pos.y += vel.y * delta;
+        for (entity, vel, pos) in (&entity_storage, &mut vel, &mut transform_storage).join() {
+            if let Some(collider) = collider_storage.get(entity) {
+                if let Some(collisions) = collision_storage.get(entity) {
+                    for collided_entity in &collisions.entities {
+                        if let Some(hit_collider) = collider_storage.get(*collided_entity) {
+                            let hit_pos = &transform_storage.get(*collided_entity).expect("Transform missing from collided entity!");
+                            if hit_collider.solid && collider.solid {
+                            }
+                        }
+                    }
+                }
+            }
+            pos.x += vel.vector.x * delta;
+            pos.y += vel.vector.y * delta;
         }
     }
 }
@@ -106,7 +123,11 @@ impl<'a> System<'a> for Draw<'a> {
 pub struct Input;
 
 impl<'a> System<'a> for Input {
-    type SystemData = (ReadExpect<'a, InputContext>, Write<'a, ActionContext>, Write<'a, GameOptions>);
+    type SystemData = (
+        ReadExpect<'a, InputContext>,
+        Write<'a, ActionContext>,
+        Write<'a, GameOptions>,
+    );
     fn run(&mut self, (input_context, mut action_context, mut options): Self::SystemData) {
         let pressed_keys = &input_context.pressed_keys;
         let last_pressed_keys = &input_context.last_pressed_keys;
@@ -169,18 +190,18 @@ impl<'a> System<'a> for Act {
     fn run(&mut self, (player, mut velocity, action_context): Self::SystemData) {
         for (player, velocity) in (&player, &mut velocity).join() {
             if action_context.player_action_map[&PlayerAction::MoveNorth] {
-                velocity.y = -player.movement_speed;
+                velocity.vector.y = -player.movement_speed;
             } else if action_context.player_action_map[&PlayerAction::MoveSouth] {
-                velocity.y = player.movement_speed;
+                velocity.vector.y = player.movement_speed;
             } else {
-                velocity.y = 0.0;
+                velocity.vector.y = 0.0;
             }
             if action_context.player_action_map[&PlayerAction::MoveEast] {
-                velocity.x = player.movement_speed;
+                velocity.vector.x = player.movement_speed;
             } else if action_context.player_action_map[&PlayerAction::MoveWest] {
-                velocity.x = -player.movement_speed;
+                velocity.vector.x = -player.movement_speed;
             } else {
-                velocity.x = 0.0;
+                velocity.vector.x = 0.0;
             }
         }
     }
