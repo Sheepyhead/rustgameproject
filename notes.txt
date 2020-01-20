@@ -1,0 +1,7 @@
+Todo:
+    - Gather data on by how much a box collider is encroaching on another and use that to bounce back to the border of the rectangle
+    - Maybe prevent a move if it would result in encroachment? Move-to-border-of-collider mechanics?
+
+Known issues:
+    - Collision between a moving entity and a non-moving entity where both have a velocity results in neither entity moving out of the collision
+

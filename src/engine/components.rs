@@ -36,6 +36,7 @@ pub struct Player {
 pub struct BoxCollider {
     pub width: f64,
     pub height: f64,
+    pub solid: bool,
 }
 
 impl BoxCollider {

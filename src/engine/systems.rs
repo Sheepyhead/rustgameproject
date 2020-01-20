@@ -5,7 +5,6 @@ use ggez::graphics::*;
 use ggez::input::keyboard::KeyCode;
 use ggez::nalgebra as na;
 use ggez::Context;
-use specs::world::EntitiesRes;
 use specs::Entities;
 use specs::Join;
 use specs::Read;
@@ -23,11 +22,36 @@ impl<'a> System<'a> for UpdatePos {
         Read<'a, DeltaTime>,
         ReadStorage<'a, Velocity>,
         WriteStorage<'a, Transform>,
+        Entities<'a>,
+        ReadStorage<'a, BoxCollisions>,
+        ReadStorage<'a, BoxCollider>,
+        Write<'a, DebugInfo>,
     );
 
-    fn run(&mut self, (delta, vel, mut pos): Self::SystemData) {
+    fn run(
+        &mut self,
+        (delta, vel, mut pos, entity_storage, collision_storage, collider_storage, mut debug_info): Self::SystemData,
+    ) {
+        let debug_info = &mut debug_info.info;
         let delta = delta.0;
-        for (vel, pos) in (&vel, &mut pos).join() {
+        for (vel, pos, entity) in (&vel, &mut pos, &entity_storage).join() {
+            if let Some(collision_data) = collision_storage.get(entity) {
+                if let Some(from_collider) = collider_storage.get(entity) {
+                    if from_collider.solid {
+                        for collided_entity in &collision_data.entities {
+                            if let Some(collided_collider) = collider_storage.get(*collided_entity)
+                            {
+                                if collided_collider.solid {
+                                    dbg!(vel, &entity);
+                                    pos.x -= vel.x * delta;
+                                    pos.y -= vel.y * delta;
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             pos.x += vel.x * delta;
             pos.y += vel.y * delta;
         }
@@ -52,11 +76,12 @@ impl<'a> System<'a> for Draw<'a> {
         ReadStorage<'a, BoxCollider>,
         ReadStorage<'a, BoxCollisions>,
         Read<'a, GameOptions>,
+        Read<'a, DebugInfo>,
     );
 
     fn run(
         &mut self,
-        (delta, transform_storage, sprite_storage, collider_storage, collision_storage, options): Self::SystemData,
+        (delta, transform_storage, sprite_storage, collider_storage, collision_storage, options, debug_info): Self::SystemData,
     ) {
         for (transform, sprite) in (&transform_storage, &sprite_storage).join() {
             graphics::draw(
@@ -73,6 +98,10 @@ impl<'a> System<'a> for Draw<'a> {
             .expect(&format!("Failed drawing sprite {:?}", sprite.image));
         }
         if options.draw_colliders {
+            let debug_info = &debug_info.info;
+            let text = TextFragment::new(debug_info.join("\n"));
+            let text = Text::new(text);
+            graphics::draw(self.context, &text, (na::Point2::new(0.0,0.0),)).expect("Drawing debug info failed!");
             for (transform, collider, collision) in
                 (&transform_storage, &collider_storage, &collision_storage).join()
             {
@@ -106,7 +135,11 @@ impl<'a> System<'a> for Draw<'a> {
 pub struct Input;
 
 impl<'a> System<'a> for Input {
-    type SystemData = (ReadExpect<'a, InputContext>, Write<'a, ActionContext>, Write<'a, GameOptions>);
+    type SystemData = (
+        ReadExpect<'a, InputContext>,
+        Write<'a, ActionContext>,
+        Write<'a, GameOptions>,
+    );
     fn run(&mut self, (input_context, mut action_context, mut options): Self::SystemData) {
         let pressed_keys = &input_context.pressed_keys;
         let last_pressed_keys = &input_context.last_pressed_keys;
@@ -198,7 +231,12 @@ impl<'a> System<'a> for Collide {
 
     fn run(
         &mut self,
-        (collider_storage, transform_storage, entity_storage, mut collisions_storage): Self::SystemData,
+        (
+            collider_storage,
+            transform_storage,
+            entity_storage,
+            mut collisions_storage,
+        ): Self::SystemData,
     ) {
         for (from_collider, from_transform, from_entity) in
             (&collider_storage, &transform_storage, &*entity_storage).join()

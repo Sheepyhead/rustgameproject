@@ -49,6 +49,9 @@ fn insert_resources(world: &mut World) {
     world.insert(GameOptions {
         draw_colliders: false
     });
+    world.insert(DebugInfo {
+        info: vec!["".to_string()],
+    })
 }
 
 pub fn new_game_state(title: &str, size: (f32, f32)) -> GameState {
@@ -73,8 +76,8 @@ pub fn new_game_state(title: &str, size: (f32, f32)) -> GameState {
     let dispatcher = DispatcherBuilder::new()
         .with(UpdatePos, "update_pos", &[])
         .with(Input, "input", &[])
-        .with(Act, "act", &["input"])
-        .with(Collide, "collide", &[])
+        .with(Collide, "collide", &["update_pos"])
+        .with(Act, "act", &["input", "collide"])
         .build();
     GameState {
         ecs: ECS { world, dispatcher },

@@ -47,3 +47,8 @@ pub enum PlayerAction {
 pub struct GameOptions {
     pub draw_colliders: bool,
 }
+
+#[derive(Default, Debug)]
+pub struct DebugInfo {
+    pub info: Vec<String>
+}
