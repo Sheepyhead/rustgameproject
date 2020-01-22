@@ -74,10 +74,9 @@ pub fn new_game_state(title: &str, size: (f32, f32)) -> GameState {
         .expect("Could not create ggez context!");
 
     let dispatcher = DispatcherBuilder::new()
-        .with(UpdatePos, "update_pos", &[])
+        .with(Physics, "physics", &[])
         .with(Input, "input", &[])
-        .with(Collide, "collide", &["update_pos"])
-        .with(Act, "act", &["input", "collide"])
+        .with(Act, "act", &["input"])
         .build();
     GameState {
         ecs: ECS { world, dispatcher },
