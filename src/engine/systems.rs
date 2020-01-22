@@ -61,17 +61,17 @@ impl<'a> System<'a> for Physics {
                 (&collider_storage, &transform_storage, &*entity_storage).join()
             {
                 if from_entity != to_entity {
-                    let from_transform = Transform {
-                        x: from_transform.x + from_velocity.x * delta,
-                        y: from_transform.y + from_velocity.y * delta,
-                        rotation: from_transform.rotation,
-                        size: from_transform.size,
-                    };
-                    if to_collider.collides_with(to_transform, from_collider, &from_transform) {
+                    let (collided, updated_transform) = from_collider.move_until_touching(
+                        from_transform,
+                        from_velocity,
+                        to_collider,
+                        to_transform,
+                        delta,
+                    );
+                    if collided {
                         collisions.entities.push(to_entity);
-                    } else {
-                        velocity_updates.push((from_entity, from_transform));
                     }
+                    velocity_updates.push((from_entity, updated_transform));
                 }
             }
         }
