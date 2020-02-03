@@ -11,13 +11,21 @@ use ggez::timer;
 use ggez::Context;
 use ggez::ContextBuilder;
 use ggez::GameResult;
+use nalgebra::Vector2;
+use nphysics2d::force_generator::DefaultForceGeneratorSet;
+use nphysics2d::joint::DefaultJointConstraintSet;
+use nphysics2d::object::DefaultBodySet;
+use nphysics2d::object::DefaultColliderSet;
+use nphysics2d::object::RigidBodyDesc;
+use nphysics2d::world::DefaultGeometricalWorld;
+use nphysics2d::world::DefaultMechanicalWorld;
 use resources::*;
 pub use specs::world::Builder;
 use specs::*;
 pub use specs::{Entity, EntityBuilder};
+use std::collections::HashSet;
 use systems::*;
 pub use uuid::Uuid;
-use std::collections::HashSet;
 
 pub mod components;
 pub mod resources;
@@ -40,18 +48,24 @@ fn register_components(world: &mut World) {
     world.register::<Sprite>();
     world.register::<Player>();
     world.register::<BoxCollider>();
-    world.register::<BoxCollisions>();
 }
 
 fn insert_resources(world: &mut World) {
     world.insert(DeltaTime(0.0));
     world.insert(ActionContext::new());
     world.insert(GameOptions {
-        draw_colliders: false
+        draw_colliders: false,
     });
     world.insert(DebugInfo {
         info: vec!["".to_string()],
-    })
+    });
+    world
+        .insert(DefaultMechanicalWorld::new(Vector2::new(0.0, 0.0)) as DefaultMechanicalWorld<f64>);
+    world.insert(DefaultGeometricalWorld::new() as DefaultGeometricalWorld<f64>);
+    world.insert(DefaultBodySet::new() as DefaultBodySet<f64>);
+    world.insert(DefaultColliderSet::new() as DefaultColliderSet<f64>);
+    world.insert(DefaultJointConstraintSet::new() as DefaultJointConstraintSet<f64>);
+    world.insert(DefaultForceGeneratorSet::new() as DefaultForceGeneratorSet<f64>);
 }
 
 pub fn new_game_state(title: &str, size: (f32, f32)) -> GameState {
@@ -108,6 +122,25 @@ impl EventHandler for ECS<'_, '_> {
             }
         }
 
+        {
+            let mut mechanical_world = self.world.write_resource::<DefaultMechanicalWorld<f64>>();
+            let mut geometrical_world = self.world.write_resource::<DefaultGeometricalWorld<f64>>();
+            let mut bodies = self.world.write_resource::<DefaultBodySet<f64>>();
+            let mut colliders = self.world.write_resource::<DefaultColliderSet<f64>>();
+            let mut joint_constraints = self
+                .world
+                .write_resource::<DefaultJointConstraintSet<f64>>();
+            let mut force_generators = self.world.write_resource::<DefaultForceGeneratorSet<f64>>();
+
+            (*mechanical_world).step(
+                &mut *geometrical_world,
+                &mut *bodies,
+                &mut *colliders,
+                &mut *joint_constraints,
+                &mut *force_generators,
+            );
+        }
+
         self.dispatcher.dispatch(&mut self.world);
         self.world.maintain();
         Ok(())
@@ -129,14 +162,16 @@ pub fn create_entity<'a>(
     game_state: &'a mut GameState,
     x: f64,
     y: f64,
-    size: f64,
     rotation: f64,
 ) -> EntityBuilder<'a> {
+    let mut body = RigidBodyDesc::new()
+        .translation(Vector2::new(x, y))
+        .rotation(rotation)
+        .build();
+    let mut body_set = *game_state.ecs.world.write_resource::<DefaultBodySet<f64>>();
+
     game_state.ecs.world.create_entity().with(Transform {
-        x,
-        y,
-        size,
-        rotation,
+        body_handle: body_set.insert(body),
     })
 }
 

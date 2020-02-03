@@ -20,69 +20,10 @@ pub struct Physics;
 
 impl<'a> System<'a> for Physics {
     type SystemData = (
-        Read<'a, DeltaTime>,
-        ReadStorage<'a, Velocity>,
-        WriteStorage<'a, Transform>,
-        Entities<'a>,
-        WriteStorage<'a, BoxCollisions>,
-        ReadStorage<'a, BoxCollider>,
-        Write<'a, DebugInfo>,
     );
 
-    fn run(
-        &mut self,
-        (
-            delta,
-            velocity_storage,
-            mut transform_storage,
-            entity_storage,
-            mut collision_storage,
-            collider_storage,
-            mut debug_info,
-        ): Self::SystemData,
-    ) {
-        let debug_info = &mut debug_info.info;
-        let delta = delta.0;
-        let mut velocity_updates: Vec<(Entity, Transform)> = vec![];
-
-        for (from_collider, from_transform, from_entity, from_velocity) in (
-            &collider_storage,
-            &transform_storage,
-            &*entity_storage,
-            &velocity_storage,
-        )
-            .join()
-        {
-            let collisions = collision_storage
-                .get_mut(from_entity)
-                .expect("Entity with box collider missing box collision component!");
-            collisions.entities.clear();
-            for (to_collider, to_transform, to_entity) in
-                (&collider_storage, &transform_storage, &*entity_storage).join()
-            {
-                if from_entity != to_entity {
-                    let from_transform = Transform {
-                        x: from_transform.x + from_velocity.x * delta,
-                        y: from_transform.y + from_velocity.y * delta,
-                        rotation: from_transform.rotation,
-                        size: from_transform.size,
-                    };
-                    if to_collider.collides_with(to_transform, from_collider, &from_transform) {
-                        collisions.entities.push(to_entity);
-                    } else {
-                        velocity_updates.push((from_entity, from_transform));
-                    }
-                }
-            }
-        }
-
-        for (entity, new_transform) in velocity_updates {
-            let mut current_transform = transform_storage
-                .get_mut(entity)
-                .expect("Entity with velocity update missing transform");
-            current_transform.x = new_transform.x;
-            current_transform.y = new_transform.y;
-        }
+    fn run(&mut self, data: Self::SystemData) {
+        
     }
 }
 
@@ -102,7 +43,6 @@ impl<'a> System<'a> for Draw<'a> {
         ReadStorage<'a, Transform>,
         ReadStorage<'a, Sprite>,
         ReadStorage<'a, BoxCollider>,
-        ReadStorage<'a, BoxCollisions>,
         Read<'a, GameOptions>,
         Read<'a, DebugInfo>,
     );
@@ -114,7 +54,6 @@ impl<'a> System<'a> for Draw<'a> {
             transform_storage,
             sprite_storage,
             collider_storage,
-            collision_storage,
             options,
             debug_info,
         ): Self::SystemData,
@@ -124,7 +63,7 @@ impl<'a> System<'a> for Draw<'a> {
                 self.context,
                 &sprite.image,
                 DrawParam {
-                    dest: na::Point2::new(transform.x as f32, transform.y as f32).into(),
+                    dest: na::Point2::new(transform.position.x as f32, transform.position.y as f32).into(),
                     rotation: transform.rotation as f32,
                     scale: na::Vector2::new(transform.size as f32, transform.size as f32).into(),
                     offset: na::Point2::new(0.5, 0.5).into(),

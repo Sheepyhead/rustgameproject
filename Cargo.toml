@@ -16,7 +16,10 @@ name = "gameproject"
 [dependencies]
 ggez = "0.5"
 find_folder = "0.3.0"
-uuid = "0.6"
+uuid = "0.8.1"
 lazy_static = "1.4.0"
 log = "0.4"
-specs = { version = "0.15.0", features = ["specs-derive"] } 
+specs = { version = "0.15.1", features = ["specs-derive"] } 
+nalgebra = "0.19.0"
+ncollide2d = "0.21.0"
+nphysics2d = "0.13.1"
