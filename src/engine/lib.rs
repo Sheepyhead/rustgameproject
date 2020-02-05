@@ -16,6 +16,8 @@ use nalgebra::Vector2;
 use ncollide2d::shape::ShapeHandle;
 use nphysics2d::force_generator::DefaultForceGeneratorSet;
 use nphysics2d::joint::DefaultJointConstraintSet;
+use nphysics2d::material::BasicMaterial;
+use nphysics2d::material::MaterialHandle;
 use nphysics2d::object::BodyPartHandle;
 use nphysics2d::object::ColliderDesc;
 use nphysics2d::object::DefaultBodySet;
@@ -29,8 +31,10 @@ pub use specs::world::Builder;
 use specs::*;
 pub use specs::{Entity, EntityBuilder};
 use std::collections::HashSet;
-use systems::*;
 pub use uuid::Uuid;
+use systems::input_system::InputSystem;
+use systems::action_system::ActionSystem;
+use systems::draw_system::DrawSystem;
 
 pub mod components;
 pub mod physics;
@@ -104,8 +108,8 @@ pub fn new_game_state(title: &str, size: (f32, f32)) -> GameState {
         .expect("Could not create ggez context!");
 
     let dispatcher = DispatcherBuilder::new()
-        .with(Input, "input", &[])
-        .with(Act, "act", &["input"])
+        .with(InputSystem, "input_system", &[])
+        .with(ActionSystem, "action_system", &["input_system"])
         .build();
     GameState {
         ecs: ECS { world, dispatcher },
@@ -163,7 +167,7 @@ impl EventHandler for ECS<'_, '_> {
         graphics::clear(context, graphics::BLACK);
 
         {
-            let mut draw_system = Draw::new(context);
+            let mut draw_system = DrawSystem::new(context);
             draw_system.run_now(&mut self.world);
         }
 
@@ -180,7 +184,7 @@ pub fn create_entity<'a>(
     let body = RigidBodyDesc::new()
         .translation(Vector2::new(x, y))
         .rotation(rotation)
-        .linear_damping(10.0)
+        .linear_damping(100.0)
         .build();
 
     let transform: TransformComponent;
@@ -209,7 +213,11 @@ pub fn add_collider<'a>(
         .expect("Attempted to add collider to entity without transform!")
         .0;
 
-    let collider = ColliderDesc::new(shape).build(BodyPartHandle(body_handle, 0));
+    let collider = ColliderDesc::new(shape)
+        .ccd_enabled(true)
+        .material(MaterialHandle::new(BasicMaterial::new(1.0, 0.2)))
+        .build(BodyPartHandle(body_handle, 0));
+
     let collider_component = ColliderComponent {
         0: collider_set.0.insert(collider),
     };

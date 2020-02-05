@@ -15,20 +15,10 @@ fn main() {
 fn create_player(game: &mut GameState) -> Entity {
     let mut image = engine::load_image(game, "\\othersprite.png");
     image.set_filter(FilterMode::Nearest);
-    let object = engine::create_entity(game, 400.0, 400.0, 0.0)
-        .with(Sprite { image })
-        .build();
-    engine::add_collider(
-        game,
-        object,
-        ShapeHandle::new(Cuboid::new(Vector2::new(10f64, 20f64))),
-    );
-    let mut image = engine::load_image(game, "\\othersprite.png");
-    image.set_filter(FilterMode::Nearest);
     let player = engine::create_entity(game, 200.0, 200.0, 0.0)
         .with(Sprite { image })
         .with(Player {
-            movement_speed: 100.0,
+            movement_speed: 1000.0,
         })
         .build();
     engine::add_collider(

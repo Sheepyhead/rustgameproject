@@ -1,11 +1,6 @@
 use ggez::event::KeyCode;
 use ggez::input::keyboard::KeyMods;
 use ggez::input::mouse::MouseContext;
-use nphysics2d::force_generator::DefaultForceGeneratorSet;
-use nphysics2d::joint::DefaultJointConstraintSet;
-use nphysics2d::object::DefaultBodySet;
-use nphysics2d::object::DefaultColliderSet;
-use nphysics2d::world::{DefaultGeometricalWorld, DefaultMechanicalWorld};
 use std::collections::HashMap;
 use std::collections::HashSet;
 
