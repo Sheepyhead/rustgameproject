@@ -1,3 +1,4 @@
+use crate::resources::*;
 use components::*;
 use ggez::conf::WindowMode;
 use ggez::conf::WindowSetup;
@@ -12,14 +13,18 @@ use ggez::Context;
 use ggez::ContextBuilder;
 use ggez::GameResult;
 use nalgebra::Vector2;
+use ncollide2d::shape::ShapeHandle;
 use nphysics2d::force_generator::DefaultForceGeneratorSet;
 use nphysics2d::joint::DefaultJointConstraintSet;
+use nphysics2d::object::BodyPartHandle;
+use nphysics2d::object::ColliderDesc;
 use nphysics2d::object::DefaultBodySet;
+use nphysics2d::object::DefaultColliderHandle;
 use nphysics2d::object::DefaultColliderSet;
 use nphysics2d::object::RigidBodyDesc;
 use nphysics2d::world::DefaultGeometricalWorld;
 use nphysics2d::world::DefaultMechanicalWorld;
-use resources::*;
+use physics::resources::*;
 pub use specs::world::Builder;
 use specs::*;
 pub use specs::{Entity, EntityBuilder};
@@ -28,6 +33,7 @@ use systems::*;
 pub use uuid::Uuid;
 
 pub mod components;
+pub mod physics;
 pub mod resources;
 pub mod systems;
 
@@ -43,11 +49,10 @@ pub struct ECS<'a, 'b> {
 }
 
 fn register_components(world: &mut World) {
-    world.register::<Transform>();
-    world.register::<Velocity>();
+    world.register::<TransformComponent>();
     world.register::<Sprite>();
     world.register::<Player>();
-    world.register::<BoxCollider>();
+    world.register::<ColliderComponent>();
 }
 
 fn insert_resources(world: &mut World) {
@@ -59,13 +64,24 @@ fn insert_resources(world: &mut World) {
     world.insert(DebugInfo {
         info: vec!["".to_string()],
     });
-    world
-        .insert(DefaultMechanicalWorld::new(Vector2::new(0.0, 0.0)) as DefaultMechanicalWorld<f64>);
-    world.insert(DefaultGeometricalWorld::new() as DefaultGeometricalWorld<f64>);
-    world.insert(DefaultBodySet::new() as DefaultBodySet<f64>);
-    world.insert(DefaultColliderSet::new() as DefaultColliderSet<f64>);
-    world.insert(DefaultJointConstraintSet::new() as DefaultJointConstraintSet<f64>);
-    world.insert(DefaultForceGeneratorSet::new() as DefaultForceGeneratorSet<f64>);
+    world.insert(MyMechanicalWorld {
+        0: DefaultMechanicalWorld::new(Vector2::new(0.0, 0.0)),
+    });
+    world.insert(MyGeometricalWorld {
+        0: DefaultGeometricalWorld::new(),
+    });
+    world.insert(MyBodySet {
+        0: DefaultBodySet::new(),
+    });
+    world.insert(MyColliderSet {
+        0: DefaultColliderSet::new(),
+    });
+    world.insert(MyJointConstraintSet {
+        0: DefaultJointConstraintSet::new(),
+    });
+    world.insert(MyForceGeneratorSet {
+        0: DefaultForceGeneratorSet::new(),
+    });
 }
 
 pub fn new_game_state(title: &str, size: (f32, f32)) -> GameState {
@@ -88,7 +104,6 @@ pub fn new_game_state(title: &str, size: (f32, f32)) -> GameState {
         .expect("Could not create ggez context!");
 
     let dispatcher = DispatcherBuilder::new()
-        .with(Physics, "physics", &[])
         .with(Input, "input", &[])
         .with(Act, "act", &["input"])
         .build();
@@ -123,21 +138,19 @@ impl EventHandler for ECS<'_, '_> {
         }
 
         {
-            let mut mechanical_world = self.world.write_resource::<DefaultMechanicalWorld<f64>>();
-            let mut geometrical_world = self.world.write_resource::<DefaultGeometricalWorld<f64>>();
-            let mut bodies = self.world.write_resource::<DefaultBodySet<f64>>();
-            let mut colliders = self.world.write_resource::<DefaultColliderSet<f64>>();
-            let mut joint_constraints = self
-                .world
-                .write_resource::<DefaultJointConstraintSet<f64>>();
-            let mut force_generators = self.world.write_resource::<DefaultForceGeneratorSet<f64>>();
+            let mut mechanical_world = self.world.write_resource::<MyMechanicalWorld>();
+            let mut geometrical_world = self.world.write_resource::<MyGeometricalWorld>();
+            let mut bodies = self.world.write_resource::<MyBodySet>();
+            let mut colliders = self.world.write_resource::<MyColliderSet>();
+            let mut joint_constraints = self.world.write_resource::<MyJointConstraintSet>();
+            let mut force_generators = self.world.write_resource::<MyForceGeneratorSet>();
 
-            (*mechanical_world).step(
-                &mut *geometrical_world,
-                &mut *bodies,
-                &mut *colliders,
-                &mut *joint_constraints,
-                &mut *force_generators,
+            mechanical_world.0.step(
+                &mut geometrical_world.0,
+                &mut bodies.0,
+                &mut colliders.0,
+                &mut joint_constraints.0,
+                &mut force_generators.0,
             );
         }
 
@@ -164,15 +177,54 @@ pub fn create_entity<'a>(
     y: f64,
     rotation: f64,
 ) -> EntityBuilder<'a> {
-    let mut body = RigidBodyDesc::new()
+    let body = RigidBodyDesc::new()
         .translation(Vector2::new(x, y))
         .rotation(rotation)
+        .linear_damping(10.0)
         .build();
-    let mut body_set = *game_state.ecs.world.write_resource::<DefaultBodySet<f64>>();
 
-    game_state.ecs.world.create_entity().with(Transform {
-        body_handle: body_set.insert(body),
-    })
+    let transform: TransformComponent;
+
+    {
+        let mut body_set = game_state.ecs.world.write_resource::<MyBodySet>();
+        transform = TransformComponent {
+            0: body_set.0.insert(body),
+        };
+    }
+
+    game_state.ecs.world.create_entity().with(transform)
+}
+
+pub fn add_collider<'a>(
+    game_state: &mut GameState,
+    entity: Entity,
+    shape: ShapeHandle<f64>,
+) -> DefaultColliderHandle {
+    let mut collider_set = game_state.ecs.world.write_resource::<MyColliderSet>();
+    let body_handle = game_state
+        .ecs
+        .world
+        .read_component::<TransformComponent>()
+        .get(entity)
+        .expect("Attempted to add collider to entity without transform!")
+        .0;
+
+    let collider = ColliderDesc::new(shape).build(BodyPartHandle(body_handle, 0));
+    let collider_component = ColliderComponent {
+        0: collider_set.0.insert(collider),
+    };
+    game_state
+        .ecs
+        .world
+        .write_component::<ColliderComponent>()
+        .insert(
+            entity,
+            ColliderComponent {
+                ..collider_component
+            },
+        )
+        .expect("Failed to add collider component!");
+    collider_component.0
 }
 
 pub fn run(game_state: &mut GameState) {

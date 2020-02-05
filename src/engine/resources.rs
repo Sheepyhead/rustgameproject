@@ -57,12 +57,3 @@ pub struct GameOptions {
 pub struct DebugInfo {
     pub info: Vec<String>,
 }
-
-pub struct PhysicsData {
-    pub mechanical_world: DefaultMechanicalWorld<f64>,
-    pub geometrical_world: DefaultGeometricalWorld<f64>,
-    pub body_set: DefaultBodySet<f64>,
-    pub collider_set: DefaultColliderSet<f64>,
-    pub joint_constraint_set: DefaultJointConstraintSet<f64>,
-    pub force_generator_set: DefaultForceGeneratorSet<f64>,
-}

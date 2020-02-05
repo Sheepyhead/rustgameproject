@@ -1,5 +1,8 @@
 use engine::components::*;
 use engine::*;
+use nalgebra::Vector2;
+use ncollide2d::shape::Cuboid;
+use ncollide2d::shape::ShapeHandle;
 
 fn main() {
     // Create a new game and run it.
@@ -12,33 +15,26 @@ fn main() {
 fn create_player(game: &mut GameState) -> Entity {
     let mut image = engine::load_image(game, "\\othersprite.png");
     image.set_filter(FilterMode::Nearest);
-    engine::create_entity(game, 400.0, 400.0, 3.0, 0.0)
+    let object = engine::create_entity(game, 400.0, 400.0, 0.0)
         .with(Sprite { image })
-        .with(Velocity { x: 1.0, y: 1.0 })
-        .with(BoxCollider {
-            width: 100.0,
-            height: 100.0,
-            solid: true,
-        })
-        .with(BoxCollisions {
-            entities: Vec::new(),
-        })
         .build();
+    engine::add_collider(
+        game,
+        object,
+        ShapeHandle::new(Cuboid::new(Vector2::new(10f64, 20f64))),
+    );
     let mut image = engine::load_image(game, "\\othersprite.png");
     image.set_filter(FilterMode::Nearest);
-    engine::create_entity(game, 200.0, 200.0, 3.0, 0.0)
+    let player = engine::create_entity(game, 200.0, 200.0, 0.0)
         .with(Sprite { image })
-        .with(Velocity { x: 0.0, y: 0.0 })
         .with(Player {
-            movement_speed: 1000.0,
+            movement_speed: 100.0,
         })
-        .with(BoxCollider {
-            width: 100.0,
-            height: 100.0,
-            solid: true,
-        })
-        .with(BoxCollisions {
-            entities: Vec::new(),
-        })
-        .build()
+        .build();
+    engine::add_collider(
+        game,
+        player,
+        ShapeHandle::new(Cuboid::new(Vector2::new(10f64, 20f64))),
+    );
+    player
 }

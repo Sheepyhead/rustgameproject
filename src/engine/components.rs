@@ -1,20 +1,12 @@
 use ggez::graphics;
+use nphysics2d::object::DefaultBodyHandle;
+use nphysics2d::object::DefaultColliderHandle;
 use specs::DenseVecStorage;
 use specs::{Component, VecStorage};
-use nphysics2d::object::DefaultBodyHandle;
 
 #[derive(Component, Debug)]
 #[storage(VecStorage)]
-pub struct Transform {
-    pub body_handle: DefaultBodyHandle
-}
-
-#[derive(Component, Debug)]
-#[storage(VecStorage)]
-pub struct Velocity {
-    pub x: f64,
-    pub y: f64,
-}
+pub struct TransformComponent(pub DefaultBodyHandle);
 
 #[derive(Component, Debug)]
 #[storage(VecStorage)]
@@ -28,10 +20,6 @@ pub struct Player {
     pub movement_speed: f64,
 }
 
-#[derive(Component, Debug, Default)]
+#[derive(Component)]
 #[storage(VecStorage)]
-pub struct BoxCollider {
-    pub width: f64,
-    pub height: f64,
-    pub solid: bool,
-}
+pub struct ColliderComponent(pub DefaultColliderHandle);
